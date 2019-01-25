@@ -7,9 +7,9 @@ Status](https://travis-ci.org/raymondben/peranavolley.svg?branch=master)](https:
 
 # peranavolley
 
-An R package for reading Perana Sports VBStats volleyball scouting
-files. Note that this package is in a relatively early stage of
-development, and functionality may change without warning.
+An R package for reading [Perana Sports VBStats](http://peranasports.com/software/vbstatshd/) volleyball
+scouting files. Note that this package is in a relatively early stage of development, and
+functionality may change without warning.
 
 See also [datavolley](https://github.com/raymondben/datavolley), which
 provides similar functionality for reading DataVolley files into R. The
