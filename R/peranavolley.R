@@ -1,6 +1,6 @@
 #' \pkg{peranavolley}
 #'
-#' Basic functions for parsing and working with Perana Sports volleyball scouting files.
+#' Functions for reading and working with Perana Sports volleyball scouting files.
 #'
 #' @name peranavolley
 #' @author Ben Raymond \email{ben@@untan.gl}

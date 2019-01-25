@@ -1,8 +1,9 @@
 Package: peranavolley
 Title: Perana Sports Volleyball Files
 Version: 0.0.14.9999
-Authors@R: person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre"))
-Description: Basic functions for parsing and working with Perana Sports volleyball scouting files.
+Authors@R: c(person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre")),
+             person("Chau", "Le", role = "ctb"))
+Description: Basic functions for reading and working with Perana Sports volleyball scouting files.
 Depends: R (>= 3.3.0)
 License: MIT + file LICENSE
 Encoding: UTF-8

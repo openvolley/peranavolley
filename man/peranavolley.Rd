@@ -6,7 +6,7 @@
 \alias{peranavolley-package}
 \title{\pkg{peranavolley}}
 \description{
-Basic functions for parsing and working with Perana Sports volleyball scouting files.
+Functions for reading and working with Perana Sports volleyball scouting files.
 }
 \author{
 Ben Raymond \email{ben@untan.gl}
