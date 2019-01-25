@@ -1,0 +1,21 @@
+Package: peranavolley
+Title: Perana Sports Volleyball Files
+Version: 0.0.14.9999
+Authors@R: person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre"))
+Description: Basic functions for parsing and working with Perana Sports volleyball scouting files.
+Depends: R (>= 3.3.0)
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+  assertthat,
+  base64enc,
+  datavolley,
+  dplyr,
+  lubridate,
+  jsonlite,
+  rlang,
+  stringr
+RoxygenNote: 6.1.1
+Suggests: testthat
+Remotes: raymondben/datavolley
