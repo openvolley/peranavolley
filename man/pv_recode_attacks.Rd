@@ -9,6 +9,8 @@ pv_recode_attacks(x, apply_to_skills = "Attack", remap)
 \arguments{
 \item{x}{data.frame or tibble: a peranavolley object as returned by \code{pv_read}, or the plays component thereof}
 
+\item{apply_to_skills}{character: rules will only be applied to rows corresponding to these skills. This function is nominally intended for recoding \code{attack_code} values (hence \code{apply_to_skills = "Attacks"} is the default). But it might be useful for other purposes, in which case other skills might need to be specified here}
+
 \item{remap}{data.frame or tibble: this data.frame must contain the column \code{new_attack_code}, and one or more columns that define the conditions to match on. See the example below for more detail}
 }
 \value{

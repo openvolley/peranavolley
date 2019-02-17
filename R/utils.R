@@ -7,6 +7,7 @@
 #' }
 #'
 #' @param x data.frame or tibble: a peranavolley object as returned by \code{pv_read}, or the plays component thereof
+#' @param apply_to_skills character: rules will only be applied to rows corresponding to these skills. This function is nominally intended for recoding \code{attack_code} values (hence \code{apply_to_skills = "Attacks"} is the default). But it might be useful for other purposes, in which case other skills might need to be specified here
 #' @param remap data.frame or tibble: this data.frame must contain the column \code{new_attack_code}, and one or more columns that define the conditions to match on. See the example below for more detail
 #'
 #' @return A character vector with new \code{attack_code} values
