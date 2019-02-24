@@ -107,9 +107,11 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         ## since we don't use it anyway, drop it
         z <- z[, setdiff(names(z), c("nickname"))]
         out <- dplyr::rename(z, player_id = "guid")
+        ## don't assign roles here: they aren't strict in psvb files, and tend to be used to describe *all* of the positions a given player plays
+        ## setter and libero we get from the lineup
         out <- mutate(out, name = paste(.data$firstname, .data$lastname),
-                      special_role = case_when(grepl("libero", .data$positionsstring, ignore.case = TRUE) ~ "L", TRUE ~ ""),
-                      role = case_when(special_role %eq% "L" ~ "libero"))
+                      special_role = "",##case_when(grepl("libero", .data$positionsstring, ignore.case = TRUE) ~ "L", TRUE ~ ""),
+                      role = NA_character_)##case_when(special_role %eq% "L" ~ "libero"))
         dplyr::select(out, -"thumbnaildata", -"positionsstring")
     }
 
@@ -243,12 +245,13 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             msgs <<- collect_messages(msgs, this_msg, qidx[set_number], x[qidx[set_number]], severity = 1)
             this_pidx <- NULL
         } else {
-            existing_role <- if (team == "home") meta$players_h$role[this_pidx] else meta$players_v$role[this_pidx]
-            if (!is.na(existing_role) && nzchar(existing_role) && !existing_role %eq% role) {
-                this_msg <- paste0("Set ", set_number, ": ", team, " ", role, " player ", player_id, " in starting lineup is listed as role ", existing_role, " in team list")
-                if (do_warn) warning(this_msg)
-                msgs <<- collect_messages(msgs, this_msg, qidx[set_number], x[qidx[set_number]], severity = 1)
-            }
+            ## don't warn on these: the roles in the psvb metadata are not strict, and tend to be used to describe *all* of the positions a given player plays
+            ##existing_role <- if (team == "home") meta$players_h$role[this_pidx] else meta$players_v$role[this_pidx]
+            ##if (!is.na(existing_role) && nzchar(existing_role) && !existing_role %eq% role) {
+            ##    this_msg <- paste0("Set ", set_number, ": ", team, " ", role, " player ", player_id, " in starting lineup is listed as role ", existing_role, " in team list")
+            ##    if (do_warn) warning(this_msg)
+            ##    msgs <<- collect_messages(msgs, this_msg, qidx[set_number], x[qidx[set_number]], severity = 1)
+            ##}
             if (team == "home") {
                 meta$players_h$role[this_pidx] <<- role
                 if (role %eq% "libero" && !grepl("L", meta$players_h$special_role[this_pidx])) meta$players_h$special_role[this_pidx] <<- paste0(meta$players_h$special_role[this_pidx], "L")
@@ -350,7 +353,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         }
         if (length(h_lineup) > 6) {
             ##cat("home liberos: ", h_lineup[-6:-1], "\n")
-            for (pid in h_lineup[-6:-1]) {
+            for (pid in setdiff(h_lineup[-6:-1], 0)) { ## ignore pid 0, means that no second lib was assigned (or possibly first lib as well??)
                 update_metadata_player_role(pid, "libero", team = "home", set_number = si)
                 ##this_pidx <- which(meta$players_h$player_id %eq% pid)
                 ##if (length(this_pidx) < 1) {
@@ -386,7 +389,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         }
         if (length(v_lineup) > 6) {
             ##cat("visiting liberos: ", v_lineup[-6:-1], "\n")
-            for (pid in v_lineup[-6:-1]) update_metadata_player_role(pid, "libero", team = "visiting", set_number = si)
+            for (pid in setdiff(v_lineup[-6:-1], 0)) update_metadata_player_role(pid, "libero", team = "visiting", set_number = si)
         }
         this_plays$home_setter_position <- NA_integer_
         this_plays$visiting_setter_position <- NA_integer_
