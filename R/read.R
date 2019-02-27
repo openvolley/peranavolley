@@ -493,17 +493,19 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                         ## align last_hl to serving player
                         last_hl <- tryCatch(rot_p1(last_hl, this_plays$playerguid[ei]),
                                             error = function(e) {
-                                                this_msg  <- paste0("Home team serving player ", this_plays$playerguid[ei], " is not in team lineup")
+                                                fln <- this_plays$file_line_number[ei]
+                                                this_msg  <- paste0("Home team serving player ", this_plays$playerguid[ei], "on line ", fln, " is not in team lineup on line ", qidx[si])
                                                 if (do_warn) warning(this_msg)
-                                                msgs <<- collect_messages(msgs, this_msg, qidx[si], x[qidx[si]], severity = 1)
+                                                msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
                                                 my_last_hl
                                             })
                     } else {
                         last_vl <- tryCatch(rot_p1(last_vl, this_plays$playerguid[ei]),
                                             error = function(e) {
-                                                this_msg  <- paste0("Visiting team serving player ", this_plays$playerguid[ei], " is not in team lineup")
+                                                fln <- this_plays$file_line_number[ei]
+                                                this_msg  <- paste0("Visiting team serving player ", this_plays$playerguid[ei], "on line ", fln, " is not in team lineup on line ", qidx[si])
                                                 if (do_warn) warning(this_msg)
-                                                msgs <<- collect_messages(msgs, this_msg, qidx[si], x[qidx[si]], severity = 1)
+                                                msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
                                                 my_last_vl
                                             })
                     }
