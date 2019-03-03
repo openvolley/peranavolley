@@ -1,6 +1,6 @@
 Package: peranavolley
 Title: Perana Sports Volleyball Files
-Version: 0.1.2
+Version: 0.1.2.9999
 Authors@R: c(person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre")),
              person("Chau", "Le", role = "ctb"))
 Description: Basic functions for reading and working with Perana Sports volleyball scouting files.

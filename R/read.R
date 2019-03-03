@@ -637,6 +637,16 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         plays$end_coordinate_x <- temp$x*0.03 + 0.5
         plays$end_coordinate_y <- (200-temp$y)*0.03 + 0.5
     }
+    ## check that e.g. both serve and reception have start = serve loc and end = reception loc
+    ## TODO check what happen when a reception has ball path entered - presumably this gives pass loc (start, should same as serve end loc) and set loc (end, should be same as set loc start if it was entered)
+    idx <- plays$skill %eq% "Reception" & lag(plays$skill) %eq% "Serve" & !lag(plays$team) %eq% plays$team ##& is.na(plays$start_coordinate_x) & !is.na(lag(plays$start_coordinate_x))
+    plays$start_coordinate_x[idx] <- lag(plays$start_coordinate_x)[idx]
+    plays$start_coordinate_y[idx] <- lag(plays$start_coordinate_y)[idx]
+    plays$mid_coordinate_x[idx] <- lag(plays$mid_coordinate_x)[idx]
+    plays$mid_coordinate_y[idx] <- lag(plays$mid_coordinate_y)[idx]
+    plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
+    plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
+
     ## convert those back to single-index coordinates, too
     plays$start_coordinate <- dv_xy2index(plays$start_coordinate_x, plays$start_coordinate_y)
     plays$mid_coordinate <- dv_xy2index(plays$mid_coordinate_x, plays$mid_coordinate_y)
@@ -654,7 +664,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
     plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
     
-    ## TODO: check that e.g. both serve and reception have start = serve loc and end = reception loc
 
     ##ggplot(xp$plays, aes(start_coordinate_x, start_coordinate_y, colour = as.factor(start_zone))) + geom_point() + datavolley::ggcourt()
     ##ggplot(xp$plays, aes(end_coordinate_x, end_coordinate_y, colour = as.factor(end_zone))) + geom_point() + datavolley::ggcourt()
