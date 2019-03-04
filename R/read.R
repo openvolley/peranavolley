@@ -210,6 +210,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     meta$result$duration <- if ("drillduration" %in% names(set_meta)) as.integer(set_meta$drillduration) else NA_integer_
     meta$result$duration[meta$result$duration == 0L] <- NA_integer_
     meta$result$score <- paste0(meta$result$score_home_team, "-", meta$result$score_visiting_team)
+    ## use this info instead of M~ section for number of sets per team in meta$teams
+    meta$teams$sets_won <- c(sum(meta$result$score_home_team > meta$result$score_visiting_team), sum(meta$result$score_home_team < meta$result$score_visiting_team))
 
     ## DV files have attack codes X5, XP, etc. Perana has 5 set zones which perform an analogous function
     ## note that using these is optional
@@ -638,7 +640,29 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         plays$end_coordinate_y <- (200-temp$y)*0.03 + 0.5
     }
     ## check that e.g. both serve and reception have start = serve loc and end = reception loc
-    ## TODO check what happen when a reception has ball path entered - presumably this gives pass loc (start, should same as serve end loc) and set loc (end, should be same as set loc start if it was entered)
+    ## if a reception skill has coordinates entered, then these give the pass loc (start, should same as serve end loc) and set loc (end, should be same as set loc start if it was entered)
+    ## DV uses set end loc as the location of the set
+    ## so any sets scouted with coordinates need to have the start coordinate transferred to the end coordinate
+    idx <- plays$skill %eq% "Set" & !is.na(plays$end_coordinate_x)
+    plays$end_coordinate_x[idx] <- plays$start_coordinate_x[idx]
+    plays$end_coordinate_y[idx] <- plays$start_coordinate_y[idx]
+    ## any receptions scouted with coordinates, transfer reception end coords (i.e. set location) to set end coords if set does not already have them
+    idx <- plays$skill %eq% "Set" & lag(plays$skill) %eq% "Reception" & lag(plays$team) %eq% plays$team & is.na(plays$end_coordinate_x) & !is.na(lag(plays$end_coordinate_x))
+    plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
+    plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
+    ## remove set start coords
+    idx <- plays$skill %eq% "Set" & !is.na(plays$start_coordinate_x)
+    plays$start_coordinate_x[idx] <- NA
+    plays$start_coordinate_y[idx] <- NA
+    ## remove all reception coords
+    idx <- plays$skill %eq% "Reception"
+    plays$start_coordinate_x[idx] <- NA
+    plays$start_coordinate_y[idx] <- NA
+    plays$mid_coordinate_x[idx] <- NA
+    plays$mid_coordinate_y[idx] <- NA
+    plays$end_coordinate_x[idx] <- NA
+    plays$end_coordinate_y[idx] <- NA
+    ## populate reception with serve coords
     idx <- plays$skill %eq% "Reception" & lag(plays$skill) %eq% "Serve" & !lag(plays$team) %eq% plays$team ##& is.na(plays$start_coordinate_x) & !is.na(lag(plays$start_coordinate_x))
     plays$start_coordinate_x[idx] <- lag(plays$start_coordinate_x)[idx]
     plays$start_coordinate_y[idx] <- lag(plays$start_coordinate_y)[idx]
@@ -647,7 +671,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
     plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
 
-    ## convert those back to single-index coordinates, too
+    ## convert everything to single-index coordinates, too
     plays$start_coordinate <- dv_xy2index(plays$start_coordinate_x, plays$start_coordinate_y)
     plays$mid_coordinate <- dv_xy2index(plays$mid_coordinate_x, plays$mid_coordinate_y)
     plays$end_coordinate <- dv_xy2index(plays$end_coordinate_x, plays$end_coordinate_y)
