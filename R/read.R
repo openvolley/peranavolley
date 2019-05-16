@@ -274,6 +274,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         xidx <- seq(qidx[si]+1, qidx[si+1]-1, by = 1)
         ## events associated with this set
         this_plays <- pparse_df(x[intersect(xidx, evidx)])
+        this_plays <- dplyr::rename(this_plays, special_code = "errortype")
         this_plays$file_line_number <- intersect(xidx, evidx)
         this_plays$timestamp <- ymd_hms(this_plays$timestamp)
         if (any(!nzchar(this_plays$eventstring))) {
@@ -297,37 +298,45 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         chk <- nrow(this_plays)
         this_plays <- left_join(this_plays, eventgrades, by = c(eventstring = "skill", "eventgrade"))
         if (nrow(this_plays) != chk) stop("error merging eventgrades into events")
-        this_plays$special_code <- NA_character_
-        ## errortype mostly (only?) applies to attacks
-        this_plays$errortype <- as.character(this_plays$errortype)
-        aidx <- this_plays$eventstring %eq% "Spike"
-        temp <- errortypes[errortypes$skill %eq% "Spike", ]
-        this_plays$errortype[aidx] <- dmapvalues(this_plays$errortype[aidx], temp$errortype, temp$evaluation)
-        if (!all(errortypes$skill %eq% "Spike")) warning("errortypes associated with events other than 'Spike' have not been processed")
+        this_plays$special_code <- as.character(this_plays$special_code)
+        for (et in unique(errortypes$skill)) {
+            aidx <- this_plays$eventstring %eq% et
+            temp <- errortypes[errortypes$skill %eq% et, ]
+            this_plays$special_code[aidx] <- dmapvalues(this_plays$special_code[aidx], temp$errortype, temp$evaluation)
+        }
 
         ## subevent goes into skill_subtype for attacks, set zone goes to attack_code
+        ## for serves, subevent goes into skill_type
         this_plays$skill_subtype <- NA_character_
+        this_plays$skill_type <- NA_character_
         this_plays$attack_code <- NA_character_
-        temp <- subevents[subevents$skill %eq% "Spike", ]
-        aidx <- this_plays$eventstring %eq% "Spike"
-        ## some subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 1-5
-        this_ss <- as.numeric(this_plays$subevent[aidx])
-        ## setting zone goes to attack_code
-        this_plays$attack_code[aidx] <- case_when(this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ as.character(this_ss - floor(this_ss/10)*10))
-        if (!missing(setting_zones)) {
-            this_plays$attack_code[aidx] <- dmapvalues(as.character(this_plays$attack_code[aidx]), from = names(setting_zones), to = setting_zones)
+        for (et in unique(subevents$skill)) {
+            temp <- subevents[subevents$skill %eq% et, ]
+            aidx <- this_plays$eventstring %eq% et
+            if (et %eq% "Spike") {
+                ## some spike subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 1-5
+                this_ss <- as.numeric(this_plays$subevent[aidx])
+                ## setting zone goes to attack_code
+                this_plays$attack_code[aidx] <- case_when(this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ as.character(this_ss - floor(this_ss/10)*10))
+                if (!missing(setting_zones)) {
+                    this_plays$attack_code[aidx] <- dmapvalues(as.character(this_plays$attack_code[aidx]), from = names(setting_zones), to = setting_zones)
+                }
+                this_ss <- case_when(this_ss %in% 0:4 ~ this_ss,
+                                     this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ floor(this_ss/1000),
+                                     TRUE ~ this_ss)
+                this_plays$skill_subtype[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
+            } else {
+                ## put into skill_subtype
+                this_ss <- this_plays$subevent[aidx]
+                this_plays$skill_type[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
+            }
         }
-        this_ss <- case_when(this_ss %in% 0:4 ~ this_ss,
-                             this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ floor(this_ss/1000),
-                             TRUE ~ this_ss)
-        this_plays$skill_subtype[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
-        if (!all(errortypes$skill %eq% "Spike")) warning("subtypes associated with events other than 'Spike' have not been processed")
 
         if (as_dv) {
             ## don't treat blocked attack as an error
-            this_plays <- mutate(this_plays, evaluation = case_when(errortype %eq% "Blocked" & eventstring %eq% "Spike" & evaluation %eq% "Error" ~ "Blocked", TRUE ~ evaluation))
-            ## attack errortype is recorded in special_code for dv
-            this_plays <- mutate(this_plays, special_code = case_when(eventstring %eq% "Spike" ~ errortype, TRUE ~ special_code))
+            this_plays <- mutate(this_plays,
+                                 evaluation = case_when(.data$special_code %eq% "Blocked" & .data$eventstring %eq% "Spike" & .data$evaluation %eq% "Error" ~ "Blocked", TRUE ~ .data$evaluation),
+                                 special_code = case_when(.data$special_code %eq% "Blocked" & .data$eventstring %eq% "Spike" ~ NA_character_, TRUE ~ .data$special_code))
         }
         ## add set-specific info
         this_plays$set_number <- as.integer(set_meta$gamenumber[si])
@@ -408,7 +417,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         last_stid <- this_plays$team_id[1] ## prev serving team
         this_plays$serving_team[1] <- this_plays$team[1]
         this_plays[, c("timeout", "substitution")] <- FALSE
-        this_plays[, c("point_won_by", "code", "skill_type", "end_subzone", "attack_description", "set_code", "set_description", "set_type", "num_players")] <- NA_character_
+        this_plays[, c("point_won_by", "code", "end_subzone", "attack_description", "set_code", "set_description", "set_type", "num_players")] <- NA_character_
         this_plays[, c("start_zone", "end_zone", "num_players_numeric", "home_team_score", "visiting_team_score")] <- NA_integer_
         ## note that home_team_score and visiting_team_score are (per DataVolley conventions) the score at the end of the point, not the score at the start of the point (as with Perana)
         this_ptid <- this_ptid + 1
@@ -589,7 +598,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     }
     ## some processing on all plays
     plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
-    ##  "errortype" applies only to attacks?
     ## "subevent2" "subevent" "eventid" "row" "userdefined01"
     plays <- dplyr::select(plays, -"eventtype")
     plays <- mutate(plays, match_id = meta$match_id,
@@ -727,8 +735,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$team_touch_id <- temp_ttid
     plays$phase <- datavolley::play_phase(plays)
 
-    ## populate skill_type with e.g. "Unknown serve reception type"
-    plays$skill_type <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill)), " type")
+    ## populate empty skill_type with e.g. "Unknown serve reception type"
+    idx <- is.na(plays$skill_type) & !is.na(plays$skill)
+    plays$skill_type[idx] <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill[idx])), " type")
 
     ## num_players on block, and also propagated back one to the attack
     plays$num_players_numeric <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ 1L,
@@ -742,8 +751,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$num_players <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players),
                                    TRUE ~ plays$num_players)
     
-    ## these cols present but not populated (special_code, num_players, num_players_numeric skill_subtype partly pop)
-## "skill_type" "attack_code" "attack_description" "set_code"
+    ## these cols present but not populated (special_code, num_players, num_players_numeric skill_type skill_subtype partly pop)
+## "attack_code" "attack_description" "set_code"
 ## [17] "set_description" "set_type" "start_zone" "end_zone"
 ## [21] "end_subzone" "num_players" "num_players_numeric"
 ## [25] "special_code" "point"

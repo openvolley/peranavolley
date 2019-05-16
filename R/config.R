@@ -60,7 +60,13 @@ pv_default_errortypes <- function() {
             "Spike", 1L, "Attack out",
             "Spike", 2L, "Blocked",
             "Spike", 3L, "Attack in net",
-            "Spike", 4L, "Net contact")
+            "Spike", 4L, "Net contact",
+
+            "Serve", 0L, NA_character_, ## not an error
+            "Serve", 1L, "Ball in net",
+            "Serve", 2L, "Ball out - long",
+            "Serve", 3L, "Ball out - side"
+            )
 }
 
 #' Define subevent interpretations
@@ -81,5 +87,12 @@ pv_default_subevents <- function() {
             "Spike", 1L, "Soft spike/topspin",
             "Spike", 2L, "Setter tip",
             "Spike", 3L, "Hard spike",
-            "Spike", 4L, "Spike off the block")
+            "Spike", 4L, "Spike off the block",
+
+            "Serve", 0L, "Unknown serve type",
+            "Serve", 1L, "Jump serve",
+            "Serve", 2L, "Jump-float serve",
+            "Serve", 3L, "Float serve",
+            "Serve", 4L, "Topspin serve"
+            )
 }
