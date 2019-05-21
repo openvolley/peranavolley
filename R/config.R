@@ -18,21 +18,20 @@ pv_default_eventgrades <- function() {
             "Serve", 3L, "#", "Ace", 1L,
             "Serve", 4L, "+", "Positive, opponent some attack", 0L,
             "Pass", 0L, "=", "Error", -1L,
-            "Pass", 1L, "-", "Negative, limited attack", 0L,
-            "Pass", 2L, "+", "Positive, attack", 0L,
-            "Pass", 3L, "#", "Perfect pass", 0L,
+            "Pass", 1L, "-/", "Negative/poor pass", 0L, ## highball-only, or no attack at all (only freeball)
+            "Pass", 2L, "!", "OK, no first tempo possible", 0L,
+            "Pass", 3L, "#+", "Perfect/positive pass", 0L,
             "Spike", 0L, "=", "Error", -1L,
-            "Spike", 1L, NA_character_, "Spike in play", 0L,
+            "Spike", 1L, "~", "Spike in play", 0L,
             "Spike", 3L, "#", "Winning attack", 1L,
             "Block", 0L, "=", "Error", -1L, ## net touch or invasion
             "Block", 1L, "+", "Positive, block touch", 0L,
             "Block", 2L, "#", "Winning block", 1L, ## solo block
             "Block", 3L, "#", "Winning block", 1L, ## multiplayer block
             "Defense", 0L, "=", "Error", -1L,
-            ##"Defense", /, "Ball directly back over net", 0L,
-            "Defense", 1L, NA_character_, "Dig in play", 0L, ## to check
-            ##"Defense", 2L, "Good dig", 0L,
-            ##"Defense", 3L, "Perfect dig", 0L,
+            "Defense", 1L, "-/", "Negative/poor dig", 0L, ## highball-only, or no attack at all (only freeball)
+            "Defense", 2L, "!", "OK, no first tempo possible", 0L,
+            "Defense", 3L, "#+", "Perfect/positive dig", 0L,
             "Set", 0L, "=", "Error", -1L,
             "Set", 1L, NA_character_, "Set in play", 0L,
             "Set", 2L, NA_character_, "Assist", 0L)##,
