@@ -274,6 +274,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         xidx <- seq(qidx[si]+1, qidx[si+1]-1, by = 1)
         ## events associated with this set
         this_plays <- pparse_df(x[intersect(xidx, evidx)])
+        if (nrow(this_plays) < 1) next
         this_plays <- dplyr::rename(this_plays, special_code = "errortype")
         this_plays$file_line_number <- intersect(xidx, evidx)
         this_plays$timestamp <- ymd_hms(this_plays$timestamp)
