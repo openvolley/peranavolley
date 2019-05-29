@@ -307,7 +307,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         }
 
         ## subevent goes into skill_subtype for attacks, set zone goes to attack_code
-        ## for serves, subevent goes into skill_type
+        ## for spikes (attacks), subevent goes into skill_subtype, otherwise skill_type
         this_plays$skill_subtype <- NA_character_
         this_plays$skill_type <- NA_character_
         this_plays$attack_code <- NA_character_
@@ -327,7 +327,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                                      TRUE ~ this_ss)
                 this_plays$skill_subtype[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
             } else {
-                ## put into skill_subtype
+                ## put into skill_type
                 this_ss <- this_plays$subevent[aidx]
                 this_plays$skill_type[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
             }
@@ -735,6 +735,10 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     }
     plays$team_touch_id <- temp_ttid
     plays$phase <- datavolley::play_phase(plays)
+
+    ## propagate serve skill_type to reception
+    plays <- mutate(plays, skill_type = case_when(.data$skill %eq% "Reception" & is.na(.data$skill_type) & lag(.data$skill) %eq% "Serve" & !is.na(lag(.data$skill_type)) ~ sub("serve", "serve reception", lag(.data$skill_type)), TRUE ~ .data$skill_type))
+    ## TODO other skills here too
 
     ## populate empty skill_type with e.g. "Unknown serve reception type"
     idx <- is.na(plays$skill_type) & !is.na(plays$skill)
