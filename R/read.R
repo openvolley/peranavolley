@@ -607,7 +607,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     ## some processing on all plays
     plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
     ## actually videoduration appears always to be zero
-    try(plays$video_time <- difftime(plays$time, video_start_time, units = "secs"), silent = TRUE)
+    try(plays$video_time <- as.integer(difftime(plays$time, video_start_time, units = "secs"), silent = TRUE))
     ## "subevent2" "subevent" "eventid" "row" "userdefined01"
     plays <- dplyr::select(plays, -"eventtype")
     plays <- mutate(plays, match_id = meta$match_id,
