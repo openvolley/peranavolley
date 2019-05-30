@@ -6,7 +6,7 @@
 #' @author Ben Raymond \email{ben@@untan.gl}
 #' @docType package
 #' @importFrom assertthat assert_that is.flag is.string
-#' @importFrom dplyr as_tibble bind_rows case_when distinct filter lag lead left_join mutate rename select tibble tribble %>%
+#' @importFrom dplyr as_tibble bind_rows case_when distinct everything filter lag lead left_join mutate rename select tibble tribble %>%
 #' @importFrom lubridate as.duration hms ymd_hms
 #' @importFrom rlang .data
 #' @importFrom stats na.omit setNames

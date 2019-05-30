@@ -73,6 +73,10 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
             out$messages$file_line_number <- as.integer(out$messages$file_line_number)
             out$messages <- out$messages[order(out$messages$file_line_number, na.last = FALSE),]
             row.names(out$messages) <- NULL
+            ## re-insert video_time from plays into msgs
+            out$messages <- out$messages[, setdiff(names(out$messages), "video_time")]
+            out$messages <- left_join(out$messages, dplyr::select_at(out$plays, c("file_line_number", "video_time")), by = "file_line_number")
+            out$messages <- dplyr::select(out$messages, "file_line_number", "video_time", everything())
         }
         class(out) <- c("peranavolley", class(out))
         out
