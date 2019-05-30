@@ -130,6 +130,12 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     }, silent = TRUE)
     meta$match_id <- temp_mm$guid
     meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = temp_to$name, text_encoding = NA_character_, zones_or_cones = "Z")
+    video_start_time <- NA
+    try({
+        temp_vid <- pparse_df(x[names(x) == "V"])
+        video_start_time <- v$starttime
+    }, silent = TRUE)
+    if (is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
     temp_ve <- pparse_df(x[names(x) == "VE"]) ## venue
     if (nrow(temp_ve) < 1) temp_ve <- tibble(name = NA_character_)
     meta$more <- data.frame(referees = NA_character_, city = tryCatch(temp_ve$name, error = function(e) NA_character_), arena = NA_character_, scout = NA_character_)
@@ -505,19 +511,20 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                         ## align last_hl to serving player
                         last_hl <- tryCatch(rot_p1(last_hl, this_plays$playerguid[ei]),
                                             error = function(e) {
-                                                fln <- this_plays$file_line_number[ei]
-                                                this_msg  <- paste0("Home team serving player ", this_plays$playerguid[ei], "on line ", fln, " is not in team lineup on line ", qidx[si])
-                                                if (do_warn) warning(this_msg)
-                                                msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
+                                                ##fln <- this_plays$file_line_number[ei]
+                                                ##this_msg  <- paste0("Home team serving player ", this_plays$playerguid[ei], " on line ", fln, " is not in team lineup on line ", qidx[si])
+                                                ##if (do_warn) warning(this_msg)
+                                                ##msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
+                                                ## no, don't throw that because it won't be right if the subs are out of whack, and the error will get caught by "the listed player is not on court in this rotation" anyway
                                                 my_last_hl
                                             })
                     } else {
                         last_vl <- tryCatch(rot_p1(last_vl, this_plays$playerguid[ei]),
                                             error = function(e) {
-                                                fln <- this_plays$file_line_number[ei]
-                                                this_msg  <- paste0("Visiting team serving player ", this_plays$playerguid[ei], "on line ", fln, " is not in team lineup on line ", qidx[si])
-                                                if (do_warn) warning(this_msg)
-                                                msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
+                                                ##fln <- this_plays$file_line_number[ei]
+                                                ##this_msg  <- paste0("Visiting team serving player ", this_plays$playerguid[ei], " on line ", fln, " is not in team lineup on line ", qidx[si])
+                                                ##if (do_warn) warning(this_msg)
+                                                ##msgs <<- collect_messages(msgs, this_msg, fln, x[fln], severity = 1)
                                                 my_last_vl
                                             })
                     }
@@ -599,6 +606,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     }
     ## some processing on all plays
     plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
+    ## actually videoduration appears always to be zero
+    try(plays$video_time <- difftime(plays$time, video_start_time, units = "secs"), silent = TRUE)
     ## "subevent2" "subevent" "eventid" "row" "userdefined01"
     plays <- dplyr::select(plays, -"eventtype")
     plays <- mutate(plays, match_id = meta$match_id,
