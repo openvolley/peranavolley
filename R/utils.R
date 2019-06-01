@@ -202,7 +202,18 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
     xp$skill_type[idx] <- "Unknown freeball type"
     xp$evaluation[idx] <- sub(" dig", " freeball", xp$evaluation[idx])
     dolog(change = "Digs following freeballs over changed to freeballs", rows = idx)
-    
+
+    ## attack on first team contact to PR
+    ## this one is particularly prone to missed actions, leave for now
+    ##idx <- xp$skill %eq% "Attack" & !lag(xp$team) %eq% xp$team
+    ##xp$skill_type[idx] <- "Other attack"
+    ##xp$attack_code[idx] <- "PR"
+    ##dolog(change = "First-contact attacks changed to attack code PR", rows = idx)
+
+    ## other possibilities:
+    ## "spike in play" followed by opposite team block (control) then another touch by the attacking team
+    ##  should be given evaluation "Blocked for reattack" with evaluation_code "!"
+
     ## drop those extra cols in case they interfere with downstream processing
     xp <- xp[, setdiff(names(xp), c("ZZZ_home_setter_id", "ZZZ_visiting_setter_id", "ZZZ_player_role"))]
     if (is.list(x) && !is.data.frame(x) && "plays" %in% names(x)) {
