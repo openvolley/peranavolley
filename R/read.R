@@ -137,7 +137,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     video_start_time <- NA
     try({
         temp_vid <- pparse_df(x[names(x) == "V"])
-        video_start_time <- v$starttime
+        video_start_time <- temp_vid$starttime
     }, silent = TRUE)
     if (is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
     temp_ve <- pparse_df(x[names(x) == "VE"]) ## venue
