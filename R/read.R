@@ -345,9 +345,11 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
 
         if (as_dv) {
             ## don't treat blocked attack as an error
-            this_plays <- mutate(this_plays,
-                                 evaluation = case_when(.data$special_code %eq% "Blocked" & .data$eventstring %eq% "Spike" & .data$evaluation %eq% "Error" ~ "Blocked", TRUE ~ .data$evaluation),
-                                 special_code = case_when(.data$special_code %eq% "Blocked" & .data$eventstring %eq% "Spike" ~ NA_character_, TRUE ~ .data$special_code))
+            idx <- this_plays$special_code %eq% "Blocked" & this_plays$eventstring %eq% "Spike"
+            ##idx <- this_plays$special_code %eq% "Blocked" & this_plays$eventstring %eq% "Spike" & this_plays$evaluation %eq% "Error"
+            this_plays$evaluation[idx] <- "Blocked"
+            this_plays$evaluation_code[idx] <- "/"
+            this_plays$special_code[idx] <- NA_character_
         }
         ## add set-specific info
         this_plays$set_number <- as.integer(set_meta$gamenumber[si])
