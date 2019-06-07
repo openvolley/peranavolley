@@ -33,7 +33,6 @@ This function modifies the plays component of a peranavolley object, following t
   \item attack_code 4 to "CF" (slide)
   \item attack code 5 treated as highball, with new attack code determined by start_zone (V5, V6, etc)
   \item any other attack (with NA attack code) treated as standard tempo with new attack code determined by start_zone (X5, X6, etc)
-  \item any first-ball attack (i.e. last touched by the other team) is mapped to a "PR" attack
   \item any dig following a freeball over is changed to skill "Freeball"
 }
 }

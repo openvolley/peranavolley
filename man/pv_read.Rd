@@ -8,7 +8,8 @@ pv_read(filename, insert_technical_timeouts = FALSE, do_warn = FALSE,
   extra_validation = 2, raw_only = FALSE,
   eventgrades = pv_default_eventgrades(),
   errortypes = pv_default_errortypes(),
-  subevents = pv_default_subevents(), setting_zones)
+  subevents = pv_default_subevents(), setting_zones,
+  postprocess = NULL)
 }
 \arguments{
 \item{filename}{string: path to file}
@@ -28,6 +29,8 @@ pv_read(filename, insert_technical_timeouts = FALSE, do_warn = FALSE,
 \item{subevents}{tibble: a tibble that defines the interpretations of \code{subevent} values; see \code{\link{pv_default_subevents}}}
 
 \item{setting_zones}{named character: if the data file has been scouted using setting zones, then each attack will have its associated setting zone (numbered 1 to 5). The setting zone names are not stored in the file, so they can be provided here as a character vector. This can either be an un-named character vector, in which case it must be of length 5; otherwise if only a subset of the five setting zones are being used then it can be provided as a named character vector(e.g. \code{setting_zones = c("1" = "X1", "3" = "X7", "4" = "medium/fast", "5" = "high")}). The values in this vector will be used to populate the \code{attack_code} column of the returned plays data}
+
+\item{postprocess}{string or function: function, or name of function, to apply to the peranavolley object as the final step in the processing}
 }
 \value{
 A named list with several elements. \code{raw} contains the extracted but unparsed text from the psvb file, \code{meta} provides match metadata, \code{plays} the play-by-play data in the form of a data.frame, and \code{messages} is a data.frame describing any inconsistencies found in the file.

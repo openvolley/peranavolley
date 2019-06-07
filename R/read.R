@@ -10,6 +10,7 @@
 #' @param errortypes tibble: a tibble that defines the interpretations of \code{errortype} values; see \code{\link{pv_default_errortypes}}
 #' @param subevents tibble: a tibble that defines the interpretations of \code{subevent} values; see \code{\link{pv_default_subevents}}
 #' @param setting_zones named character: if the data file has been scouted using setting zones, then each attack will have its associated setting zone (numbered 1 to 5). The setting zone names are not stored in the file, so they can be provided here as a character vector. This can either be an un-named character vector, in which case it must be of length 5; otherwise if only a subset of the five setting zones are being used then it can be provided as a named character vector(e.g. \code{setting_zones = c("1" = "X1", "3" = "X7", "4" = "medium/fast", "5" = "high")}). The values in this vector will be used to populate the \code{attack_code} column of the returned plays data
+#' @param postprocess string or function: function, or name of function, to apply to the peranavolley object as the final step in the processing
 #'
 #' @return A named list with several elements. \code{raw} contains the extracted but unparsed text from the psvb file, \code{meta} provides match metadata, \code{plays} the play-by-play data in the form of a data.frame, and \code{messages} is a data.frame describing any inconsistencies found in the file.
 #'
@@ -22,7 +23,7 @@
 #' x <- pv_read(filename, setting_zones = c("X1", "X2", "X7", "medium/fast", "high"))
 #'
 #' @export
-pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE, extra_validation = 2, raw_only = FALSE, eventgrades = pv_default_eventgrades(), errortypes = pv_default_errortypes(), subevents = pv_default_subevents(), setting_zones) {
+pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE, extra_validation = 2, raw_only = FALSE, eventgrades = pv_default_eventgrades(), errortypes = pv_default_errortypes(), subevents = pv_default_subevents(), setting_zones, postprocess = NULL) {
     assert_that(is.string(filename))
     assert_that(is.flag(do_warn), !is.na(do_warn))
     assert_that(inherits(eventgrades, "data.frame"))
@@ -34,6 +35,19 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
         assert_that(length(setting_zones) > 0, length(setting_zones) <= 5)
         assert_that(!any(is.na(setting_zones)))
         if (is.null(names(setting_zones)) || !all(names(setting_zones) %in% as.character(1:5))) stop("the names of the setting_zones parameter must in the range \"1\" to \"5\"")
+    }
+    if (!(is.null(postprocess) || is.string(postprocess) || is.function(postprocess))) stop("postprocess should be a function, string, or NULL")
+    if (!is.null(postprocess)) {
+        ppfunobj <- tryCatch(match.fun(postprocess), error = function(e) {
+            if (is.character(postprocess)) {
+                warning("postprocess parameter \"", postprocess, "\" could not be resolved to a function, ignoring")
+            } else {
+                warning("postprocess parameter could not be resolved to a function, ignoring")
+            }
+            NULL
+        })
+    } else {
+        ppfunobj <- NULL
     }
     x <- readLines(filename, warn = FALSE)
     x <- base64enc::base64decode(x)
@@ -79,6 +93,7 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
             out$messages <- dplyr::select(out$messages, "file_line_number", "video_time", everything())
         }
         class(out) <- c("peranavolley", class(out))
+        if (is.function(ppfunobj)) out <- ppfunobj(out)
         out
     }
 }
