@@ -32,7 +32,7 @@
 
 <meta property="og:title" content="An opinionated recoding — pv_tas_recode" />
 
-<meta property="og:description" content="Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described in the &quot;scouting guidelines&quot; vignette." />
+<meta property="og:description" content="Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described at https://raymondben.github.io/scouting-notes/" />
 <meta name="twitter:card" content="summary" />
 
 
@@ -63,7 +63,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">peranavolley</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.2.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.2.2</span>
       </span>
     </div>
 
@@ -77,18 +77,6 @@
 </li>
 <li>
   <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-    <li>
-      <a href="../articles/scouting-guidelines.html">VBStats Scouting Guidelines</a>
-    </li>
-  </ul>
 </li>
       </ul>
       
@@ -113,7 +101,7 @@
 
     <div class="ref-description">
     
-    <p>Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described in the "scouting guidelines" vignette.</p>
+    <p>Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described at https://raymondben.github.io/scouting-notes/</p>
     
     </div>
 
@@ -144,7 +132,7 @@
     
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>This function modifies the plays component of a peranavolley object, following the scouting conventions described in the "scouting guidelines" vignette. The following changes are made:</p><ul>
+    <p>This function modifies the plays component of a peranavolley object, following the scouting conventions described at https://raymondben.github.io/scouting-notes/. The following changes are made:</p><ul>
 <li><p>attacks marked as "Setter tip" ("Dump" in VBStats) by a setter are mapped to attack_code "PP"</p></li>
 <li><p>any "Setter tip" by a non-setter are treated as freeballs. Their skill entry is changed to "Freeball", and attack code to NA</p></li>
 <li><p>attack_code 1 to "X1"</p></li>
@@ -153,7 +141,6 @@
 <li><p>attack_code 4 to "CF" (slide)</p></li>
 <li><p>attack code 5 treated as highball, with new attack code determined by start_zone (V5, V6, etc)</p></li>
 <li><p>any other attack (with NA attack code) treated as standard tempo with new attack code determined by start_zone (X5, X6, etc)</p></li>
-<li><p>any first-ball attack (i.e. last touched by the other team) is mapped to a "PR" attack</p></li>
 <li><p>any dig following a freeball over is changed to skill "Freeball"</p></li>
 </ul>
     

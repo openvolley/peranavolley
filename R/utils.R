@@ -119,9 +119,9 @@ check_remap_ok <- function(remap) {
 
 #' An opinionated recoding
 #'
-#' Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described in the "scouting guidelines" vignette.
+#' Note that this function is only likely to be useful if you have scouted your VBStats files following the conventions described at https://raymondben.github.io/scouting-notes/
 #'
-#' This function modifies the plays component of a peranavolley object, following the scouting conventions described in the "scouting guidelines" vignette. The following changes are made:
+#' This function modifies the plays component of a peranavolley object, following the scouting conventions described at https://raymondben.github.io/scouting-notes/. The following changes are made:
 #' \itemize{
 #'   \item attacks marked as "Setter tip" ("Dump" in VBStats) by a setter are mapped to attack_code "PP"
 #'   \item any "Setter tip" by a non-setter are treated as freeballs. Their skill entry is changed to "Freeball", and attack code to NA
