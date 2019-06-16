@@ -152,12 +152,14 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     video_start_time <- NA
     try({
         temp_vid <- pparse_df(x[names(x) == "V"])
-        video_start_time <- temp_vid$starttime
+        if (!is.null(temp_vid) && nrow(temp_vid) > 0) video_start_time <- temp_vid$starttime
     }, silent = TRUE)
     if (is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
     temp_ve <- pparse_df(x[names(x) == "VE"]) ## venue
     if (nrow(temp_ve) < 1) temp_ve <- tibble(name = NA_character_)
-    meta$more <- data.frame(referees = NA_character_, city = tryCatch(temp_ve$name, error = function(e) NA_character_), arena = NA_character_, scout = NA_character_)
+    meta$more <- tibble(referees = NA_character_, city = tryCatch(temp_ve$name, error = function(e) NA_character_), arena = NA_character_,
+                            scout = if ("coder" %in% names(temp_mm) && !is.null(temp_mm$coder) && nzchar(temp_mm$coder)) temp_mm$coder else NA_character_,
+                            notes = if ("notes" %in% names(temp_mm) && !is.null(temp_mm$notes) && nzchar(temp_mm$notes)) temp_mm$notes else NA_character_)
 
     temp_th <- pparse_df(x[names(x) == "TH"])
     temp_ta <- pparse_df(x[names(x) == "TA"])
@@ -584,6 +586,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei-1]+1
             }
         }
+        if (is.na(this_plays$home_team_score[1])) this_plays$home_team_score[1] <- 0L
+        if (is.na(this_plays$visiting_team_score[1])) this_plays$visiting_team_score[1] <- 0L
         ## fill in scores on end_of_set lines
         this_plays$home_team_score[ei] <- max(this_plays$home_team_score, na.rm = TRUE)
         this_plays$visiting_team_score[ei] <- max(this_plays$visiting_team_score, na.rm = TRUE)
