@@ -15,10 +15,15 @@
 #' @export
 pv_validate <- function(x, validation_level = 2) {
     class(x) <- c("datavolley", class(x))
-    out <- datavolley::validate_dv(x, file_type = "indoor")
-    ## filter out some messages that don't apply to perana files
-    idx <- grepl("have no position (opposite/outside/etc) assigned in the players list", out$message, fixed = TRUE)
-    out <- out[!idx, ]
+    ## skip this if the number of rows in plays is less than 3 (i.e. only one action)
+    if (nrow(x$plays) > 2) {
+        out <- datavolley::validate_dv(x, file_type = "indoor")
+        ## filter out some messages that don't apply to perana files
+        idx <- grepl("have no position (opposite/outside/etc) assigned in the players list", out$message, fixed = TRUE)
+        out <- out[!idx, ]
+    } else {
+        out <- tibble()
+    }
     out
 }
 
