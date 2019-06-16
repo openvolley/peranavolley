@@ -4,6 +4,10 @@
 \name{reexports}
 \alias{reexports}
 \alias{\%>\%}
+\alias{inspect}
+\alias{teams}
+\alias{home_team}
+\alias{visiting_team}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -11,6 +15,8 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
+  \item{datavolley}{\code{\link[datavolley]{inspect}}, \code{\link[datavolley]{teams}}, \code{\link[datavolley]{home_team}}, \code{\link[datavolley]{visiting_team}}}
+
   \item{dplyr}{\code{\link[dplyr]{\%>\%}}}
 }}
 
