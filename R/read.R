@@ -134,7 +134,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         dplyr::select(out, -"thumbnaildata", -"positionsstring")
     }
 
-    known_event_types <- c("Block", "Defense", "Pass", "Serve", "Set", "Spike", "Substitution", "Timeout", "")
+    known_event_types <- c("Block", "Defense", "Pass", "Serve", "Set", "Spike", "Substitution", "Timeout", "") ##"Freeball", 
 
     file_meta <- tibble(fileformat = "PSVB", file_type = "perana_indoor")
     meta <- list()
@@ -779,17 +779,28 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$skill_type[idx] <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill[idx])), " type")
 
     ## num_players on block, and also propagated back one to the attack
-    plays$num_players_numeric <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ 1L,
-                                           plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ 2L, ## actually this is 2 or 3 players
-                                           TRUE ~ plays$num_players_numeric)
-    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players_numeric),
-                                           TRUE ~ plays$num_players_numeric)
-    plays$num_players <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ "1 player block",
-                                   plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ "Multiplayer block",
-                                   TRUE ~ plays$num_players)
-    plays$num_players <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players),
-                                   TRUE ~ plays$num_players)
-    
+##    plays$num_players_numeric <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ 1L,
+##                                           plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ 2L, ## actually this is 2 or 3 players
+##                                           TRUE ~ plays$num_players_numeric)
+##    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players_numeric),
+##                                           TRUE ~ plays$num_players_numeric)
+##    plays$num_players <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ "1 player block",
+##                                   plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ "Multiplayer block",
+##                                   TRUE ~ plays$num_players)
+##    plays$num_players <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players),
+##                                   TRUE ~ plays$num_players)
+    ## number of blockers now comes from attacks
+    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & plays$subevent2 %eq% 1 ~ 0L,
+                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 2 ~ 1L,
+                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 3 ~ 2L,
+                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 4 ~ 3L,
+                                           TRUE ~ as.integer(plays$num_players_numeric))
+    plays$num_players <- case_when(plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 0 ~ "No block",
+                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 1 ~ "1 player block",
+                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 2 ~ "2 player block",
+                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 3 ~ "3 player block",
+                                   TRUE ~ as.character(plays$num_players))
+
     ## these cols present but not populated (special_code, num_players, num_players_numeric skill_type skill_subtype partly pop)
 ## "attack_code" "attack_description" "set_code"
 ## [17] "set_description" "set_type" "start_zone" "end_zone"
