@@ -586,8 +586,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei-1]+1
             }
         }
-        if (is.na(this_plays$home_team_score[1])) this_plays$home_team_score[1] <- 0L
-        if (is.na(this_plays$visiting_team_score[1])) this_plays$visiting_team_score[1] <- 0L
         ## fill in scores on end_of_set lines
         this_plays$home_team_score[ei] <- max(this_plays$home_team_score, na.rm = TRUE)
         this_plays$visiting_team_score[ei] <- max(this_plays$visiting_team_score, na.rm = TRUE)
@@ -614,7 +612,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         for (vv in c("home_team_score", "visiting_team_score")) {
             temp <- distinct(this_plays[!is.na(this_plays[[vv]]), c("point_id", vv)])
             if (any(duplicated(temp$point_id))) {
-                warning("multiple ", vv, " in at least one point!")
+                warning("multiple ", vv, " in at least one point! (set ", si, ", event ", ei, ", point_id ", temp$point_id[duplicated(temp$point_id)], ")")
+##dpid <- temp$point_id[duplicated(temp$point_id)]
+##cat(str(this_plays[this_plays$point_id %in% dpid, ]))
                 temp <- temp[!duplicated(temp$point_id), ]
             }
             chk <- nrow(this_plays)
