@@ -150,11 +150,13 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     meta$match_id <- temp_mm$guid
     meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = temp_to$name, text_encoding = NA_character_, zones_or_cones = "Z")
     video_start_time <- NA
-    try({
-        temp_vid <- pparse_df(x[names(x) == "V"])
-        if (!is.null(temp_vid) && nrow(temp_vid) > 0) video_start_time <- temp_vid$starttime
-    }, silent = TRUE)
-    if (is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
+    if (any(names(x) %eq% "V")) {
+        try({
+            temp_vid <- pparse_df(x[names(x) == "V"])
+            if (!is.null(temp_vid) && nrow(temp_vid) > 0) video_start_time <- temp_vid$starttime
+        }, silent = TRUE)
+    }
+    if (is.null(video_start_time) || is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
     temp_ve <- pparse_df(x[names(x) == "VE"]) ## venue
     if (nrow(temp_ve) < 1) temp_ve <- tibble(name = NA_character_)
     meta$more <- tibble(referees = NA_character_, city = tryCatch(temp_ve$name, error = function(e) NA_character_), arena = NA_character_,
