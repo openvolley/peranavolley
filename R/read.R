@@ -148,7 +148,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         temp_mm$time <- hms(format(temp_mm$trainingdate, "%H:%M:%S"))
     }, silent = TRUE)
     meta$match_id <- temp_mm$guid
-    meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = temp_to$name, text_encoding = NA_character_, zones_or_cones = "Z")
+    meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = if (nrow(temp_to) < 1) NA_character_ else temp_to$name, text_encoding = NA_character_, zones_or_cones = "Z")
     video_start_time <- NA
     if (any(names(x) %eq% "V")) {
         try({
@@ -347,13 +347,14 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 ## some spike subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 1-5
                 this_ss <- as.numeric(this_plays$subevent[aidx])
                 ## setting zone goes to attack_code
-                this_plays$attack_code[aidx] <- case_when(this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ as.character(this_ss - floor(this_ss/10)*10))
+                this_plays$attack_code[aidx] <- case_when(this_ss %in% c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115) ~ as.character(this_ss - floor(this_ss/10)*10))
                 if (!missing(setting_zones)) {
                     this_plays$attack_code[aidx] <- dmapvalues(as.character(this_plays$attack_code[aidx]), from = names(setting_zones), to = setting_zones)
                 }
                 this_ss <- case_when(this_ss %in% 0:4 ~ this_ss,
-                                     this_ss %in% c(111:115, 1111:1115, 2111:2115, 3111:3115, 4111:4115) ~ floor(this_ss/1000),
+                                     this_ss %in% c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115) ~ floor(this_ss/1000),
                                      TRUE ~ this_ss)
+                if (!all(this_ss %in% c(NA, 0:4))) warning("unexpected skill SubEvent type(s): ", paste(setdiff(this_ss, c(NA, 0:4)), collapse = ", ", sep = ", "))
                 this_plays$skill_subtype[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
             } else {
                 ## put into skill_type
@@ -445,7 +446,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays$point_id <- NA_integer_
         this_plays$serving_team <- NA_character_
         last_hts <- 0; last_vts <- 0 ## prev team scores
-        if (!this_plays$eventstring[1] %eq% "Serve") stop("Set ", si, " did not start with serve")
+        if (!this_plays$eventstring[1] %in% c("Serve", "Timeout", "Substitution")) stop("Set ", si, " did not start with serve, substitution, or timeout")
         last_stid <- this_plays$team_id[1] ## prev serving team
         this_plays$serving_team[1] <- this_plays$team[1]
         this_plays[, c("timeout", "substitution")] <- FALSE
