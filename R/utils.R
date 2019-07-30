@@ -225,6 +225,35 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
     }
 }
 
+#' @rdname pv_tas_recode
+#' @export
+pv_tas_live_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
+    x <- pv_tas_recode(x, remap = remap, log_changes = log_changes)
+    ## need to fix phase: first fix team_touch_id
+    plays <- x$plays
+    tid <- 0
+    temp_ttid <- rep(NA, nrow(plays))
+    temp_ttid[1] <- tid
+    temp_team <- plays$team_id
+    temp_ptid <- plays$point_id
+    temp_skill <- plays$skill
+    had_attack <- FALSE
+    for (k in seq_len(nrow(plays))[-1]) {
+        ## the team touch has ended if this skill is by a different team, or the point_id has changed, or we have already seen an attack from this team during this touch (in which case the first attack was the reception attack, and now we are seeing the end-of-point attack by the same team)
+        if (!identical(temp_team[k], temp_team[k-1]) || !identical(temp_ptid[k], temp_ptid[k-1]) || (had_attack && temp_skill[k] %eq% "Attack"))  {
+            tid <- tid+1
+            had_attack <- FALSE
+        } else {
+            if (temp_skill[k] %eq% "Attack") had_attack <- TRUE
+        }
+        temp_ttid[k] <- tid
+    }
+    plays$team_touch_id <- temp_ttid
+    plays$phase <- datavolley::play_phase(plays)
+    x$plays <- plays
+    x
+}
+
 # this in the old all-in-one-tibble format, can be deleted later
 # @export
 # @rdname pv_tas_recode
@@ -264,10 +293,12 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
 #' @export
 #' @rdname pv_tas_recode
 pv_tas_remap <- function() {
-list("Setter dumps to PP attacks" = list(conditions = tibble(skill = "Attack", player_role = "setter", skill_subtype = "Setter tip"),
+list("Setter (high) dumps to freeball over" = list(conditions = tibble(skill = "Attack", player_role = "setter", skill_subtype = "Setter tip", attack_code = 5),
+                                                   values = tibble(attack_code = NA_character_, skill = "Freeball", skill_type = "Unknown freeball type", skill_subtype = NA_character_)),
+     "Setter dumps to PP attacks" = list(conditions = tibble(skill = "Attack", player_role = "setter", skill_subtype = "Setter tip"),
                                          values = tibble(attack_code = "PP", skill_type = "Other attack")),
      "Dumps by non-setter to freeball over" = list(conditions = tibble(skill = "Attack", skill_subtype = "Setter tip"),
-                                                   values = tibble(attack_code = NA_character_, skill = "Freeball", skill_type = "Unknown freeball type")),
+                                                   values = tibble(attack_code = NA_character_, skill = "Freeball", skill_type = "Unknown freeball type", skill_subtype = NA_character_)),
      "Setting zone 1 attacks to X1" = list(conditions = tibble(skill = "Attack", attack_code = 1),
                                            values = tibble(attack_code = "X1", skill_type = "Quick ball attack")),
      "Setting zone 2 attacks to X2" = list(conditions = tibble(skill = "Attack", attack_code = 2),

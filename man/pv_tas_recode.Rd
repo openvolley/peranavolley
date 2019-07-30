@@ -2,10 +2,13 @@
 % Please edit documentation in R/utils.R
 \name{pv_tas_recode}
 \alias{pv_tas_recode}
+\alias{pv_tas_live_recode}
 \alias{pv_tas_remap}
 \title{An opinionated recoding}
 \usage{
 pv_tas_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
+
+pv_tas_live_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
 
 pv_tas_remap()
 }
