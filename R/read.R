@@ -345,14 +345,17 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             aidx <- this_plays$eventstring %eq% et
             if (et %eq% "Spike") {
                 ## some spike subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 1-5
+                all_subev <- c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115)
                 this_ss <- as.numeric(this_plays$subevent[aidx])
                 ## setting zone goes to attack_code
-                this_plays$attack_code[aidx] <- case_when(this_ss %in% c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115) ~ as.character(this_ss - floor(this_ss/10)*10))
+                this_sz <- case_when(this_ss %in% all_subev ~ as.character(this_ss - floor(this_ss/10)*10))
+                this_sz[this_sz %eq% "0"] <- NA_character_
+                this_plays$attack_code[aidx] <- this_sz
                 if (!missing(setting_zones)) {
                     this_plays$attack_code[aidx] <- dmapvalues(as.character(this_plays$attack_code[aidx]), from = names(setting_zones), to = setting_zones)
                 }
                 this_ss <- case_when(this_ss %in% 0:4 ~ this_ss,
-                                     this_ss %in% c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115) ~ floor(this_ss/1000),
+                                     this_ss %in% all_subev ~ floor(this_ss/1000),
                                      TRUE ~ this_ss)
                 if (!all(this_ss %in% c(NA, 0:4))) warning("unexpected skill SubEvent type(s): ", paste(setdiff(this_ss, c(NA, 0:4)), collapse = ", ", sep = ", "))
                 this_plays$skill_subtype[aidx] <- dmapvalues(as.character(this_ss), as.character(temp$subevent), temp$evaluation)
