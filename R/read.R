@@ -298,6 +298,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     all_players <- bind_rows(mutate(meta$players_h, team = this_home_team, team_id = this_home_team_id),
                              mutate(meta$players_v, team = this_visiting_team, team_id = this_visiting_team_id))
     all_players <- dplyr::select(all_players, playerguid = "player_id", "team", "team_id", player_number = "number", player_name = "name")
+    ## add an "unknown player" to catch any events without an assigned player
+    all_players <- bind_rows(all_players, tibble(playerguid = "", team = "unknown", team_id = "unknown", player_number = NA, player_name = "unknown"))
     this_ptid <- 0
     for (si in seq_len(length(qidx) - 1)) {
         xidx <- seq(qidx[si]+1, qidx[si+1]-1, by = 1)
@@ -320,7 +322,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays <- left_join(this_plays, all_players, by = "playerguid")
         if (nrow(this_plays) != chk) stop("error merging players into events")
 
-        chk <- !this_plays$team_id %in% c(this_home_team_id, this_visiting_team_id) & !this_plays$eventstring %in% c("Timeout") & !this_plays$end_of_set
+        chk <- !this_plays$team_id %in% c(this_home_team_id, this_visiting_team_id, "unknown") & !this_plays$eventstring %in% c("Timeout") & !this_plays$end_of_set
         if (any(chk)) {
             ##cat(str(this_plays[chk, ]))
             stop("unmatched player/team")
