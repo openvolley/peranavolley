@@ -193,8 +193,14 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
         chng <- bind_rows(chng, attr(xp, "changes"))
         attr(xp, "changes") <- NULL
     }
-    ## fix evaluations of freeballs?
-    ## what was an A# will now be a F#, called "Winning attack". This *should* be followed by a dig error, but the scout might not have entered that
+    ## fix evaluations of freeballs
+    ## because they start scouted as attacks, they end up as
+    ## = Error; / Blocked; ~ Spike in play; # Winning attack
+    fidx <- xp$skill %eq% "Freeball"
+    xp$evaluation[fidx & xp$evaluation_code %eq% "~"] <- "Freeball in play"
+    xp$evaluation[fidx & xp$evaluation_code %eq% "#"] <- "Winning freeball"
+    ## what was an A# will now be a F#, with evaluation "Winning freeball"
+    ## This *should* be followed by a dig error, but the scout might not have entered that
     ## digs on freeballs over are treated as freeball passes
     idx <- xp$skill %eq% "Dig" & lag(xp$skill) %eq% "Freeball" & !lag(xp$team) %eq% xp$team
     xp$skill[idx] <- "Freeball"
