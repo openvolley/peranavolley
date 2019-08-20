@@ -705,7 +705,15 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     idx <- plays$skill %eq% "Set" & !is.na(plays$start_coordinate_x)
     plays$start_coordinate_x[idx] <- NA
     plays$start_coordinate_y[idx] <- NA
-    ## remove all reception coords
+    ## if reception coords entered but serve not, transfer to serve
+    idx <- which(plays$skill %eq% "Reception" & !is.na(plays$start_coordinate_x) & lag(plays$skill) %eq% "Serve" & is.na(lag(plays$start_coordinate_x)))
+    plays$start_coordinate_x[idx-1] <- plays$start_coordinate_x[idx]
+    plays$start_coordinate_y[idx-1] <- plays$start_coordinate_y[idx]
+    plays$mid_coordinate_x[idx-1] <- plays$mid_coordinate_x[idx]
+    plays$mid_coordinate_y[idx-1] <- plays$mid_coordinate_y[idx]
+    plays$end_coordinate_x[idx-1] <- plays$end_coordinate_x[idx]
+    plays$end_coordinate_y[idx-1] <- plays$end_coordinate_y[idx]
+    ## now remove all reception coords
     idx <- plays$skill %eq% "Reception"
     plays$start_coordinate_x[idx] <- NA
     plays$start_coordinate_y[idx] <- NA
@@ -727,7 +735,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$mid_coordinate <- dv_xy2index(plays$mid_coordinate_x, plays$mid_coordinate_y)
     plays$end_coordinate <- dv_xy2index(plays$end_coordinate_x, plays$end_coordinate_y)
 
-    ## and to zones, which will all be NA at this point
+    ## and convert to zones, which will all be NA at this point
+    ## TODO cones
     plays$start_zone <- as.integer(plays$start_zone)
     plays$end_zone <- as.integer(plays$end_zone)
     plays$end_subzone <- as.character(plays$end_subzone)
