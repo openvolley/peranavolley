@@ -335,6 +335,8 @@ list("Setter (high) dumps to freeball over" = list(conditions = tibble(skill = "
                                                                                "V8", "High ball attack",
                                                                                "V8", "High ball attack",
                                                                                NA_character_, "Unknown attack type")),
+     "Middle-hitter attacks without setting zone to PR" = list(conditions = tibble(skill = "Attack", player_role = "middle"),
+                                                   values = tibble(attack_code = "PR", attack_description = "Attack on opponent overpass", skill_type = "Other attack")),
      "Attacks without setting zone to normal-tempo equivalents" = list(conditions = tribble(~skill, ~start_zone,
                                                                                             "Attack", 4,
                                                                                             "Attack", 2,
