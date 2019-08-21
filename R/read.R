@@ -451,7 +451,12 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays$point_id <- NA_integer_
         this_plays$serving_team <- NA_character_
         last_hts <- 0; last_vts <- 0 ## prev team scores
-        if (!this_plays$eventstring[1] %in% c("Serve", "Timeout", "Substitution")) stop("Set ", si, " did not start with serve, substitution, or timeout")
+        if (!this_plays$eventstring[1] %in% c("Serve", "Timeout", "Substitution")) {
+            ##stop("Set ", si, " did not start with serve, substitution, or timeout")
+            this_msg <- paste0("Set ", si, " did not start with serve, substitution, or timeout")
+            if (do_warn) warning(this_msg)
+            msgs <- collect_messages(msgs, this_msg, qidx[si], x[qidx[si]], severity = 2)
+        }
         last_stid <- this_plays$team_id[1] ## prev serving team
         this_plays$serving_team[1] <- this_plays$team[1]
         this_plays[, c("timeout", "substitution")] <- FALSE
