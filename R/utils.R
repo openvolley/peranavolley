@@ -193,6 +193,8 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
         chng <- bind_rows(chng, attr(xp, "changes"))
         attr(xp, "changes") <- NULL
     }
+    ## add freeball_over col
+    xp$freeball_over <- xp$skill %eq% "Freeball"
     ## fix evaluations of freeballs
     ## because they start scouted as attacks, they end up as
     ## = Error; / Blocked; ~ Spike in play; # Winning attack
@@ -214,6 +216,11 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
     ##xp$skill_type[idx] <- "Other attack"
     ##xp$attack_code[idx] <- "PR"
     ##dolog(change = "First-contact attacks changed to attack code PR", rows = idx)
+    ## this handled (commented out) for middles in pv_tas_recode BUT IT WON'T WORK YET BECAUSE WE DON'T HAVE PLAYER ROLES OTHER THAN SETTER/LIBERO
+
+    ## - when attack skill_subtype is "Spike off the block" (subevent=4) and it's NOT a kill AND there's no following block THEN insert a block control (unknown player)
+    ##idx <- xp$skill %eq% "Attack" & xp$skill_subtype %eq% "Spike off the block" & evaluation %eq% "Spike in play" & !lead(xp$skill) %eq% "Block"
+    ## TODO
 
     ## other possibilities:
     ## "spike in play" followed by opposite team block (control) then another touch by the attacking team
@@ -335,8 +342,8 @@ list("Setter (high) dumps to freeball over" = list(conditions = tibble(skill = "
                                                                                "V8", "High ball attack",
                                                                                "V8", "High ball attack",
                                                                                NA_character_, "Unknown attack type")),
-     "Middle-hitter attacks without setting zone to PR" = list(conditions = tibble(skill = "Attack", player_role = "middle"),
-                                                   values = tibble(attack_code = "PR", attack_description = "Attack on opponent overpass", skill_type = "Other attack")),
+##     "Middle-hitter attacks without setting zone to PR" = list(conditions = tibble(skill = "Attack", player_role = "middle"),
+##                                                   values = tibble(attack_code = "PR", attack_description = "Attack on opponent overpass", skill_type = "Other attack")),
      "Attacks without setting zone to normal-tempo equivalents" = list(conditions = tribble(~skill, ~start_zone,
                                                                                             "Attack", 4,
                                                                                             "Attack", 2,
