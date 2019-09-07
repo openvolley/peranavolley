@@ -797,7 +797,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     ## TODO other skills here too
 
     ## populate empty skill_type with e.g. "Unknown serve reception type"
-    idx <- is.na(plays$skill_type) & !is.na(plays$skill)
+    idx <- is.na(plays$skill_type) & !is.na(plays$skill) & !plays$skill %in% c("Substitution", "Timeout", "Technical timeout", "Rotation error", "Sanction")
     plays$skill_type[idx] <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill[idx])), " type")
 
     ## num_players on block, and also propagated back one to the attack
