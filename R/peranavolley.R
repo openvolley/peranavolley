@@ -11,7 +11,7 @@
 #' @importFrom lubridate as.duration hms ymd_hms
 #' @importFrom rlang .data
 #' @importFrom stats na.omit setNames
-#' @importFrom stringr str_match
+#' @importFrom stringr str_match str_trim
 #' @importFrom utils read.csv
 
 NULL

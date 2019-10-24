@@ -35,6 +35,8 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
         assert_that(length(setting_zones) > 0, length(setting_zones) <= 5)
         assert_that(!any(is.na(setting_zones)))
         if (is.null(names(setting_zones)) || !all(names(setting_zones) %in% as.character(1:5))) stop("the names of the setting_zones parameter must in the range \"1\" to \"5\"")
+    } else {
+        setting_zones <- setNames(as.character(1:5), 1:5)
     }
     if (!(is.null(postprocess) || is.string(postprocess) || is.function(postprocess))) stop("postprocess should be a function, string, or NULL")
     if (!is.null(postprocess)) {
@@ -66,7 +68,25 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
     if (raw_only) {
         list(raw = unname(x))
     } else {
-        out <- pv_parse(x, eventgrades = eventgrades, errortypes = errortypes, subevents = subevents, setting_zones = setting_zones, do_warn = do_warn)
+        tryCatch({
+            out <- pv_parse(x, eventgrades = eventgrades, errortypes = errortypes, subevents = subevents, setting_zones = setting_zones, do_warn = do_warn)
+        }, error = function(e) {
+            ## if we have an embedded newline in e.g. Notes field, the fromJSON will fail
+            ## expect first line to be "PSVB" and all other lines to start with "XXXX~{" (with one to four X's)
+            unex <- !(x %eq% "PSVB" | grepl("^(DTAP|DTHP|E|M|MAP|MHP|PA|PH|PSVB|Q|SS|TA|TAP|TH|THP|TO|VE)~", x))
+            if (any(unex)) {
+                newx <- x
+                for (clps in rev(which(unex))) {
+                    newx[clps-1] <- paste0(newx[clps-1], " ", newx[clps])
+                }
+                newx <- newx[!unex]
+                names(newx) <- vapply(newx, function(z) sub("~.*", "", z), FUN.VALUE = "", USE.NAMES = FALSE)
+                x <<- newx
+                out <<- pv_parse(newx, eventgrades = eventgrades, errortypes = errortypes, subevents = subevents, setting_zones = setting_zones, do_warn = do_warn)
+            } else {
+                stop(e)
+            }
+        })
         out$meta$filename <- filename
         out$raw <- unname(x)
         if (!is.null(out$messages)) {
@@ -134,7 +154,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         dplyr::select(out, -"thumbnaildata", -"positionsstring")
     }
 
-    known_event_types <- c("Block", "Defense", "Pass", "Serve", "Set", "Spike", "Substitution", "Timeout", "") ##"Freeball", 
+    known_event_types <- c("Block", "Defense", "Pass", "Serve", "Set", "Spike", "Substitution", "Timeout", "Technical Timeout", "") ##"Freeball",
+    ## for single-team coding
+    known_event_types <- c(known_event_types, "Opposition Kill", "Opposition Serve Error", "Opposition Serve Ace", "Opposition Error", "Opposition Hit Error", "Opposition Score")
 
     file_meta <- tibble(fileformat = "PSVB", file_type = "perana_indoor")
     meta <- list()
@@ -321,7 +343,45 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         chk <- nrow(this_plays)
         this_plays <- left_join(this_plays, all_players, by = "playerguid")
         if (nrow(this_plays) != chk) stop("error merging players into events")
-
+        idx <- grepl("^Opposition ", this_plays$eventstring)
+        if (any(idx)) {
+            ## for one-team scouting, remap "opposition" event types
+            this_plays$team[idx] <- this_visiting_team
+            this_plays$team_id[idx] <- this_visiting_team_id
+            idx <- this_plays$eventstring %eq% "Opposition Serve Error"
+            if (any(idx)) {
+                this_plays$eventstring[idx] <- "Serve"
+                this_plays$eventgrade[idx] <- 0L
+            }
+            idx <- this_plays$eventstring %eq% "Opposition Serve Ace"
+            if (any(idx)) {
+                this_plays$eventstring[idx] <- "Serve"
+                this_plays$eventgrade[idx] <- 3L
+            }
+            idx <- this_plays$eventstring %eq% "Opposition Hit Error"
+            if (any(idx)) {
+                this_plays$eventstring[idx] <- "Spike"
+                this_plays$eventgrade[idx] <- 0L
+            }
+            idx <- this_plays$eventstring %eq% "Opposition Kill"
+            if (any(idx)) {
+                this_plays$eventstring[idx] <- "Spike"
+                this_plays$eventgrade[idx] <- 3L
+            }
+            idx <- this_plays$eventstring %eq% "Opposition Error"
+            if (any(idx)) {
+                ## could be dig/set/block/etc
+                this_plays$eventstring[idx] <- "Defense"
+                this_plays$eventgrade[idx] <- 0L
+            }
+            ## "Opposition Score" not yet dealt with
+        }
+        idx <- grepl("^Opposition ", this_plays$eventstring)
+        if (any(idx)) {
+            this_msg <- paste0("Unrecognised eventstring '", this_plays$eventstring[idx], "'. Please let us know if this causes unexpected behaviour")
+            if (do_warn) warning(paste0("Unrecognised eventstring(s): ", paste(unique(this_plays$eventstring[idx]), collapse = ", "), ". Please let us know if this causes unexpected behaviour"))
+            msgs <- collect_messages(msgs, this_msg, this_plays$file_line_number[idx], x[this_plays$file_line_number[idx]], severity = 1)
+        }
         chk <- !this_plays$team_id %in% c(this_home_team_id, this_visiting_team_id, "unknown") & !this_plays$eventstring %in% c("Timeout") & !this_plays$end_of_set
         if (any(chk)) {
             ##cat(str(this_plays[chk, ]))
@@ -466,6 +526,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_ptid <- this_ptid + 1
         this_plays$point_id[1] <- this_ptid
         my_last_hl <- last_hl; my_last_vl <- last_vl
+        this_plays$eventstring[this_plays$eventstring %eq% "Technical Timeout"] <- "Technical timeout"
         for (ei in seq_len(nrow(this_plays))[-1]) {
             if (this_plays$eventstring[ei] %eq% "Substitution") {
                 ## outgoing player is in playerguid
@@ -501,6 +562,10 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                     this_plays$team[ei] <- this_visiting_team
                     this_plays$team_id[ei] <- this_visiting_team_id
                 }
+                this_ptid <- this_ptid + 1
+                this_plays$timeout[ei] <- TRUE
+            } else if (this_plays$eventstring[ei] %eq% "Technical timeout") {
+                ## subevent on TTs is the TT number? 1 or 2
                 this_ptid <- this_ptid + 1
                 this_plays$timeout[ei] <- TRUE
             } else if (this_plays$end_of_set[ei]) {
@@ -661,7 +726,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
 
     ##plays %>% count(skill, eventgrade, evaluation)
     ##temp <- setNames(read.csv(text=gsub("|", ", ", plays$ballstartstring, fixed = TRUE), header = FALSE), c("x", "y", "z"))
-    temp <- gsub("\\|0[[:space:]]*$", "", plays$ballstartstring)
+    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballstartstring))
+    temp[temp %in% c("", "NA")] <- "0, 0"
     if (any(grepl("|", temp, fixed = TRUE))) {
         warning("unexpected format of ballstartstring, skipping")
     } else {
@@ -672,7 +738,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         plays$start_coordinate_x <- temp$x*0.03 + 0.5
         plays$start_coordinate_y <- (200-temp$y)*0.03 + 0.5
     }
-    temp <- gsub("\\|0[[:space:]]*$", "", plays$ballmidstring)
+    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballmidstring))
+    temp[temp %in% c("", "NA")] <- "0, 0"
     if (any(grepl("|", temp, fixed = TRUE))) {
         warning("unexpected format of ballmidstring, skipping")
     } else {
@@ -683,7 +750,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         plays$mid_coordinate_x <- temp$x*0.03 + 0.5
         plays$mid_coordinate_y <- (200-temp$y)*0.03 + 0.5
     }
-    temp <- gsub("\\|0[[:space:]]*$", "", plays$ballendstring)
+    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballendstring))
+    temp[temp %in% c("", "NA")] <- "0, 0"
     if (any(grepl("|", temp, fixed = TRUE))) {
         warning("unexpected format of ballendstring, skipping")
         cat(plays$ballendstring, "\n", sep = "#")
