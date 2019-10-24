@@ -156,8 +156,11 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
 
     known_event_types <- c("Block", "Defense", "Pass", "Serve", "Set", "Spike", "Substitution", "Timeout", "Technical Timeout", "") ##"Freeball",
     ## for single-team coding
-    known_event_types <- c(known_event_types, "Opposition Kill", "Opposition Serve Error", "Opposition Serve Ace", "Opposition Error", "Opposition Hit Error", "Opposition Score")
-
+    single_team_events <- c("Opposition Kill", "Opposition Serve Error", "Opposition Serve Ace", "Opposition Error", "Opposition Hit Error", "Opposition Score")
+    is_single_team_coded <- any(grepl("\"Opposition (Kill|Serve Error|Serve Ace|Error|Hit Error|Score)\"", x))
+    if (is_single_team_coded) {
+        known_event_types <- c(known_event_types, single_team_events)
+    }
     file_meta <- tibble(fileformat = "PSVB", file_type = "perana_indoor")
     meta <- list()
     temp_mm <- pparse_df(x[names(x) == "M"]) ## match metadata
@@ -527,7 +530,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays$point_id[1] <- this_ptid
         my_last_hl <- last_hl; my_last_vl <- last_vl
         this_plays$eventstring[this_plays$eventstring %eq% "Technical Timeout"] <- "Technical timeout"
+        prev_row_was_winloss <- FALSE
         for (ei in seq_len(nrow(this_plays))[-1]) {
+            this_row_was_winloss <- FALSE
             if (this_plays$eventstring[ei] %eq% "Substitution") {
                 ## outgoing player is in playerguid
                 ## incoming player is in userdefined01
@@ -551,60 +556,97 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 }
                 this_ptid <- this_ptid + 1
                 this_plays$substitution[ei] <- TRUE
-            } else if (this_plays$eventstring[ei] %eq% "Timeout") {
-                ## subevent on timeouts is number already called
-                ## 0 = first timeout for that team
-                ## 1 = second
-                if (this_plays$userdefined01[ei] %eq% this_home_team_id) {
-                    this_plays$team[ei] <- this_home_team
-                    this_plays$team_id[ei] <- this_home_team_id
-                } else {
-                    this_plays$team[ei] <- this_visiting_team
-                    this_plays$team_id[ei] <- this_visiting_team_id
+                this_plays$home_team_score[ei] <- this_plays$teamscore[ei]
+                this_plays$visiting_team_score[ei] <- this_plays$oppositionscore[ei]
+            } else if (this_plays$eventstring[ei] %in% c("Timeout", "Technical timeout")) {
+                if (this_plays$eventstring[ei] %eq% "Timeout") {
+                    ## subevent on timeouts is number already called
+                    ## 0 = first timeout for that team
+                    ## 1 = second
+                    if (this_plays$userdefined01[ei] %eq% this_home_team_id) {
+                        this_plays$team[ei] <- this_home_team
+                        this_plays$team_id[ei] <- this_home_team_id
+                    } else {
+                        this_plays$team[ei] <- this_visiting_team
+                        this_plays$team_id[ei] <- this_visiting_team_id
+                    }
                 }
-                this_ptid <- this_ptid + 1
-                this_plays$timeout[ei] <- TRUE
-            } else if (this_plays$eventstring[ei] %eq% "Technical timeout") {
                 ## subevent on TTs is the TT number? 1 or 2
                 this_ptid <- this_ptid + 1
                 this_plays$timeout[ei] <- TRUE
+                ## scores are at the timeout call, so they are the scores at the conclusion of the previous point
+                this_plays$home_team_score[ei-1] <- this_plays$teamscore[ei]
+                this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei]
+                this_plays$home_team_score[ei] <- this_plays$teamscore[ei]
+                this_plays$visiting_team_score[ei] <- this_plays$oppositionscore[ei]
+                if (this_plays$teamscore[ei] > last_hts) {
+                    ## home team won last point
+                    ## make sure this gets assigned to last actual point, not last timeout or sub
+                    for (slow_backwards in rev(seq_len(ei-1))) {
+                        if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                            this_plays$point_won_by[slow_backwards] <- this_home_team
+                            break
+                        }
+                    }
+                    if (!last_stid %eq% this_plays$team_id[ei]) {
+                        ## rotate
+                        my_last_hl <- rot_one(my_last_hl)
+                    }
+                } else {
+                    ## visiting team won last point
+                    ##this_plays$point_won_by[ei-1] <- this_visiting_team
+                    for (slow_backwards in rev(seq_len(ei-1))) {
+                        if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                            this_plays$point_won_by[slow_backwards] <- this_visiting_team
+                            break
+                        }
+                    }
+                    if (!last_stid %eq% this_plays$team_id[ei]) {
+                        ## rotate
+                        my_last_vl <- rot_one(my_last_vl)
+                    }
+                }
             } else if (this_plays$end_of_set[ei]) {
                 this_plays$code[ei] <- paste0("**", si, "set")
                 this_plays$timestamp[ei] <- this_plays$timestamp[ei-1]
                 this_ptid <- this_ptid + 1
             } else {
-                if (this_plays$eventstring[ei] %eq% "Serve") {
+                this_row_was_winloss <- !is.na(this_plays$win_loss[ei]) & abs(this_plays$win_loss[ei]) > 0
+                if (this_plays$eventstring[ei-1] %in% c("Substitution", "Timeout", "Technical timeout") && !this_plays$eventstring[ei] %eq% "Serve") this_ptid <- this_ptid + 1
+                if (this_plays$eventstring[ei] %eq% "Serve" || (prev_row_was_winloss && is_single_team_coded)) {
                     ## new point
                     this_ptid <- this_ptid + 1
-                    this_plays$serving_team[ei] <- this_plays$team[ei]
-                    ## teamscore, oppositionscore are the scores at the start of this (new) point; assign these to (home|visiting)_team_score
-                    this_plays$home_team_score[ei-1] <- this_plays$teamscore[ei]
-                    this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei]
-                    if (this_plays$teamscore[ei] > last_hts) {
-                        ## home team won last point
-                        ## make sure this gets assigned to last actual point, not last timeout or sub
-                        for (slow_backwards in rev(seq_len(ei-1))) {
-                            if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
-                                this_plays$point_won_by[slow_backwards] <- this_home_team
-                                break
+                    if (this_plays$eventstring[ei] %eq% "Serve") this_plays$serving_team[ei] <- this_plays$team[ei]
+                    ## teamscore, oppositionscore are the scores at the start of this (new) point; assign these to (home|visiting)_team_score on the previous point to be consistent with datavolley
+                    if (!this_plays$eventstring[ei-1] %in% c("Substitution", "Timeout", "Technical timeout")) {
+                        this_plays$home_team_score[ei-1] <- this_plays$teamscore[ei]
+                        this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei]
+                        if (this_plays$teamscore[ei] > last_hts) {
+                            ## home team won last point
+                            ## make sure this gets assigned to last actual point, not last timeout or sub
+                            for (slow_backwards in rev(seq_len(ei-1))) {
+                                if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                                    this_plays$point_won_by[slow_backwards] <- this_home_team
+                                    break
+                                }
                             }
-                        }
-                        if (!last_stid %eq% this_plays$team_id[ei]) {
-                            ## rotate
-                            my_last_hl <- rot_one(my_last_hl)
-                        }
-                    } else {
-                        ## visiting team won last point
-                        ##this_plays$point_won_by[ei-1] <- this_visiting_team
-                        for (slow_backwards in rev(seq_len(ei-1))) {
-                            if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
-                                this_plays$point_won_by[slow_backwards] <- this_visiting_team
-                                break
+                            if (!last_stid %eq% this_plays$team_id[ei]) {
+                                ## rotate
+                                my_last_hl <- rot_one(my_last_hl)
                             }
-                        }
-                        if (!last_stid %eq% this_plays$team_id[ei]) {
-                            ## rotate
-                            my_last_vl <- rot_one(my_last_vl)
+                        } else {
+                            ## visiting team won last point
+                            ##this_plays$point_won_by[ei-1] <- this_visiting_team
+                            for (slow_backwards in rev(seq_len(ei-1))) {
+                                if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                                    this_plays$point_won_by[slow_backwards] <- this_visiting_team
+                                    break
+                                }
+                            }
+                            if (!last_stid %eq% this_plays$team_id[ei]) {
+                                ## rotate
+                                my_last_vl <- rot_one(my_last_vl)
+                            }
                         }
                     }
                     if (this_plays$team_id[ei] %eq% this_home_team_id) {
@@ -652,6 +694,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             this_visiting_setter_pos <- if (visiting_setter_id %in% last_vl) which(last_vl == visiting_setter_id) else NA_integer_
             if (length(this_visiting_setter_pos) != 1) this_visiting_setter_pos <- NA_integer_
             this_plays$visiting_setter_position[ei] <- this_visiting_setter_pos
+            prev_row_was_winloss <- this_row_was_winloss
         }
         ## point_won_by for last point, which will be second-last row because we inserted an end-of-set marker
         ## also home_team_score & visiting_team_score
