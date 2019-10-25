@@ -490,6 +490,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 ##}
             }
         }
+        if (is.na(set_meta$oppositionstartinglineup[si]) || !nzchar(set_meta$oppositionstartinglineup[si])) stop("No visiting team (opposition) starting rotation has been entered for set ", si, ". These starting rotations are required (but this might change in a future release)")
         v_lineup <- strsplit(set_meta$oppositionstartinglineup[si], ",")[[1]]
         if (length(v_lineup) < 6 || length(v_lineup) > 8) stop("unexpected visiting team lineup")
         last_vl <- v_lineup[1:6]
