@@ -335,7 +335,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays$file_line_number <- intersect(xidx, evidx)
         this_plays$timestamp <- ymd_hms(this_plays$timestamp)
         if (any(!nzchar(this_plays$eventstring))) {
-            stop("empty event string")
+            idx <- which(!nzchar(this_plays$eventstring))
+            msgs <- collect_messages(msgs, "Ignoring event with empty eventstring", this_plays$file_line_number[idx], x[this_plays$file_line_number[idx]], severity = 2)
+            this_plays <- this_plays[nzchar(this_plays$eventstring), ]
         }
         if (!all(this_plays$eventstring %in% known_event_types)) {
             stop("unexpected eventstrings: ", paste(setdiff(this_plays$eventstring, known_event_types)))
@@ -383,7 +385,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         if (any(idx)) {
             this_msg <- paste0("Unrecognised eventstring '", this_plays$eventstring[idx], "'. Please let us know if this causes unexpected behaviour")
             if (do_warn) warning(paste0("Unrecognised eventstring(s): ", paste(unique(this_plays$eventstring[idx]), collapse = ", "), ". Please let us know if this causes unexpected behaviour"))
-            msgs <- collect_messages(msgs, this_msg, this_plays$file_line_number[idx], x[this_plays$file_line_number[idx]], severity = 1)
+            msgs <- collect_messages(msgs, this_msg, this_plays$file_line_number[idx], x[this_plays$file_line_number[idx]], severity = 2)
         }
         chk <- !this_plays$team_id %in% c(this_home_team_id, this_visiting_team_id, "unknown") & !this_plays$eventstring %in% c("Timeout") & !this_plays$end_of_set
         if (any(chk)) {
