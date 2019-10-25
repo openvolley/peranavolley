@@ -543,7 +543,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 }
             }
         }
-        if (this_was_winloss) this_ptid <- this_ptid + 1 ## win or loss, so increment point_id
+        if (this_was_winloss && is_single_team_coded) this_ptid <- this_ptid + 1 ## win or loss, so increment point_id
         this_plays[, c("timeout", "substitution")] <- FALSE
         this_plays[, c("point_won_by", "code", "end_subzone", "attack_description", "set_code", "set_description", "set_type", "num_players")] <- NA_character_
         this_plays[, c("start_zone", "end_zone", "num_players_numeric", "home_team_score", "visiting_team_score")] <- NA_integer_
@@ -640,7 +640,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                     this_plays$serving_team[ei] <- this_plays$team[ei]
                 } else if (this_plays$eventstring[ei] %eq% "Pass") {
                     this_plays$serving_team[ei] <- setdiff(c(this_home_team, this_visiting_team), this_plays$team[ei])
-                } else {
+                } else if (is_single_team_coded) {
                     this_plays$serving_team[ei] <- serving_team_after_previous_row
                 }
                 if (this_row_was_winloss) {
