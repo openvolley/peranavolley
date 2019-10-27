@@ -506,6 +506,9 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             ##cat("visiting liberos: ", v_lineup[-6:-1], "\n")
             for (pid in setdiff(v_lineup[-6:-1], 0)) update_metadata_player_role(pid, "libero", team = "visiting", set_number = si)
         }
+        this_plays[, c("timeout", "substitution")] <- FALSE
+        this_plays[, c("point_won_by", "code", "end_subzone", "attack_description", "set_code", "set_description", "set_type", "num_players")] <- NA_character_
+        this_plays[, c("start_zone", "end_zone", "num_players_numeric", "home_team_score", "visiting_team_score")] <- NA_integer_
         this_plays$home_setter_position <- NA_integer_
         this_plays$visiting_setter_position <- NA_integer_
         this_home_setter_pos <- if (home_setter_id %in% last_hl) which(last_hl == home_setter_id) else NA_integer_
@@ -525,7 +528,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             if (do_warn) warning(this_msg)
             msgs <- collect_messages(msgs, this_msg, qidx[si], x[qidx[si]], severity = 2)
         }
-        last_stid <- this_plays$team_id[1] ## prev serving team
         serving_team_after_previous_row <- NA_character_
         this_was_winloss <- !is.na(this_plays$win_loss[1]) & abs(this_plays$win_loss[1]) > 0
         if (this_plays$eventstring[1] %in% c("Serve", "Pass")) {
@@ -542,12 +544,19 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                     ## loss
                     serving_team_after_previous_row <- setdiff(c(this_home_team, this_visiting_team), this_plays$team[1])
                 }
+                this_plays$point_won_by[1] <- serving_team_after_previous_row
             }
         }
-        if (this_was_winloss && is_single_team_coded) this_ptid <- this_ptid + 1 ## win or loss, so increment point_id
-        this_plays[, c("timeout", "substitution")] <- FALSE
-        this_plays[, c("point_won_by", "code", "end_subzone", "attack_description", "set_code", "set_description", "set_type", "num_players")] <- NA_character_
-        this_plays[, c("start_zone", "end_zone", "num_players_numeric", "home_team_score", "visiting_team_score")] <- NA_integer_
+        if (this_was_winloss && is_single_team_coded) {
+            this_ptid <- this_ptid + 1 ## win or loss, so increment point_id
+            if (this_plays$point_won_by[1] %eq% this_home_team) {
+                this_plays$home_team_score[1] <- 1L
+                this_plays$visiting_team_score[1] <- 0L
+            } else if (this_plays$point_won_by[1] %eq% this_visiting_team) {
+                this_plays$home_team_score[1] <- 0L
+                this_plays$visiting_team_score[1] <- 1L
+            }
+        }
         ## note that home_team_score and visiting_team_score are (per DataVolley conventions) the score at the end of the point, not the score at the start of the point (as with Perana)
         my_last_hl <- last_hl; my_last_vl <- last_vl
         this_plays$eventstring[this_plays$eventstring %eq% "Technical Timeout"] <- "Technical timeout"
@@ -555,6 +564,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         for (ei in seq_len(nrow(this_plays))[-1]) {
             this_row_was_winloss <- FALSE
             if (this_plays$eventstring[ei] %eq% "Substitution") {
+                serving_team_after_this_row <- serving_team_after_previous_row
                 ## outgoing player is in playerguid
                 ## incoming player is in userdefined01
 #                if (debug) cat("Sub ")
@@ -579,7 +589,28 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 this_plays$substitution[ei] <- TRUE
                 this_plays$home_team_score[ei] <- this_plays$teamscore[ei]
                 this_plays$visiting_team_score[ei] <- this_plays$oppositionscore[ei]
+                this_plays$home_team_score[ei-1] <- this_plays$teamscore[ei]
+                this_plays$visiting_team_score[ei-1] <- this_plays$oppositionscore[ei]
+                if (this_plays$teamscore[ei] > last_hts) {
+                    ## home team won last point
+                    ## make sure this gets assigned to last actual point, not last timeout or sub
+                    for (slow_backwards in rev(seq_len(ei-1))) {
+                        if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                            this_plays$point_won_by[slow_backwards] <- this_home_team
+                            break
+                        }
+                    }
+                } else {
+                    ## visiting team won last point
+                    for (slow_backwards in rev(seq_len(ei-1))) {
+                        if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
+                            this_plays$point_won_by[slow_backwards] <- this_visiting_team
+                            break
+                        }
+                    }
+                }
             } else if (this_plays$eventstring[ei] %in% c("Timeout", "Technical timeout")) {
+                serving_team_after_this_row <- serving_team_after_previous_row
                 if (this_plays$eventstring[ei] %eq% "Timeout") {
                     ## subevent on timeouts is number already called
                     ## 0 = first timeout for that team
@@ -609,28 +640,20 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                             break
                         }
                     }
-                    if (!last_stid %eq% this_plays$team_id[ei]) {
-                        ## rotate
-                        my_last_hl <- rot_one(my_last_hl)
-                    }
                 } else {
                     ## visiting team won last point
-                    ##this_plays$point_won_by[ei-1] <- this_visiting_team
                     for (slow_backwards in rev(seq_len(ei-1))) {
                         if (!this_plays$eventstring[slow_backwards] %in% not_action_skills) {
                             this_plays$point_won_by[slow_backwards] <- this_visiting_team
                             break
                         }
                     }
-                    if (!last_stid %eq% this_plays$team_id[ei]) {
-                        ## rotate
-                        my_last_vl <- rot_one(my_last_vl)
-                    }
                 }
             } else if (this_plays$end_of_set[ei]) {
                 this_plays$code[ei] <- paste0("**", si, "set")
                 this_plays$timestamp[ei] <- this_plays$timestamp[ei-1]
                 this_ptid <- this_ptid + 1
+                serving_team_after_this_row <- NA_character_
             } else {
                 this_row_was_winloss <- !is.na(this_plays$win_loss[ei]) & abs(this_plays$win_loss[ei]) > 0
                 ## if we just had a non-action event, and this isn't a serve, increment the point_id
@@ -652,6 +675,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                         ## loss
                         serving_team_after_this_row <- setdiff(c(this_home_team, this_visiting_team), this_plays$team[ei])
                     }
+                    if (is_single_team_coded) this_plays$point_won_by[ei] <- serving_team_after_this_row
                 }
                 if (this_plays$eventstring[ei] %eq% "Serve" || (prev_row_was_winloss && is_single_team_coded)) {
                     ## new point
@@ -669,7 +693,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                                     break
                                 }
                             }
-                            if (!last_stid %eq% this_plays$team_id[ei]) {
+                            if (!is.na(serving_team_after_this_row) && !is.na(serving_team_after_previous_row) && !(serving_team_after_this_row %eq% serving_team_after_previous_row)) {
                                 ## rotate
                                 my_last_hl <- rot_one(my_last_hl)
                             }
@@ -682,7 +706,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                                     break
                                 }
                             }
-                            if (!last_stid %eq% this_plays$team_id[ei]) {
+                            if (!is.na(serving_team_after_this_row) && !is.na(serving_team_after_previous_row) && !(serving_team_after_this_row %eq% serving_team_after_previous_row)) {
                                 ## rotate
                                 my_last_vl <- rot_one(my_last_vl)
                             }
@@ -718,7 +742,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                     #if (!identical(last_hl, my_last_hl)) {
                     #    warning("home team serving player is not who we expect at point_id ", this_ptid)
                     #}
-                    last_stid <- this_plays$team_id[ei]
                 } else {
                     ## event is part of same point
                 }
@@ -760,6 +783,16 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         chk <- nrow(this_plays)
         this_plays <- left_join(dplyr::select(this_plays, -"serving_team"), temp, by = "point_id")
         if (nrow(this_plays) != chk) stop("error expanding serving_team entries")
+        ## we can still have missing serving_team entries at this step
+        ## e.g if the file wasn't single-team-coded and a point had a single action that wasn't a serve or reception
+        cst <- NA_character_ ## current serving team
+        for (ei in seq_len(nrow(this_plays))) {
+            if (ei %eq% 1 || this_plays$end_of_set[ei-1]) cst <- NA_character_
+            if (!is.na(cst) && is.na(this_plays$serving_team[ei]) && !this_plays$eventstring[ei] %in% c("Substitution", "Timeout", "Technical timeout", NA_character_)) {
+                this_plays$serving_team[ei] <- cst
+            }
+            if (!this_plays$eventstring[ei] %in% c("Substitution", "Timeout", "Technical timeout", NA_character_)) cst <- this_plays$point_won_by[ei]
+        }
         chk <- is.na(this_plays$serving_team) & !this_plays$eventstring %in% c("Substitution", "Timeout", "Technical timeout", NA_character_)
         if (any(chk)) {
             warning("have not successfully populated all serving_team entries")
