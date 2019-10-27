@@ -159,6 +159,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     single_team_events <- c("Opposition Kill", "Opposition Serve Error", "Opposition Serve Ace", "Opposition Error", "Opposition Hit Error", "Opposition Score")
     is_single_team_coded <- any(grepl("\"Opposition (Kill|Serve Error|Serve Ace|Error|Hit Error|Score)\"", x))
     if (is_single_team_coded) {
+##***        cat("SINGLE\n")
         known_event_types <- c(known_event_types, single_team_events)
     }
     file_meta <- tibble(fileformat = "PSVB", file_type = "perana_indoor")
@@ -317,6 +318,15 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             }
         }
         this_pidx
+    }
+
+    row_was_winloss <- function(dat, rowidx) {
+        this_row_was_winloss <- !is.na(dat$win_loss[rowidx]) & abs(dat$win_loss[rowidx]) > 0
+        ## only treat the last entry of multiplayer blocks as winloss
+        if (dat$eventstring[rowidx] %eq% "Block" && dat$eventgrade[rowidx] %eq% 3 && lead(dat$eventstring)[rowidx] %eq% "Block" && lead(dat$eventgrade)[rowidx] %eq% 3) {
+            this_row_was_winloss <- FALSE
+        }
+        this_row_was_winloss
     }
 
     ## player and team info to join to plays
@@ -529,7 +539,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             msgs <- collect_messages(msgs, this_msg, qidx[si], x[qidx[si]], severity = 2)
         }
         serving_team_after_previous_row <- NA_character_
-        this_was_winloss <- !is.na(this_plays$win_loss[1]) & abs(this_plays$win_loss[1]) > 0
+        this_was_winloss <- row_was_winloss(this_plays, 1L)
         if (this_plays$eventstring[1] %in% c("Serve", "Pass")) {
             if (this_plays$eventstring[1] %eq% "Serve") {
                 this_plays$serving_team[1] <- this_plays$team[1]
@@ -655,7 +665,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 this_ptid <- this_ptid + 1
                 serving_team_after_this_row <- NA_character_
             } else {
-                this_row_was_winloss <- !is.na(this_plays$win_loss[ei]) & abs(this_plays$win_loss[ei]) > 0
+                this_row_was_winloss <- row_was_winloss(this_plays, ei)
                 ## if we just had a non-action event, and this isn't a serve, increment the point_id
                 if (this_plays$eventstring[ei-1] %in% c("Substitution", "Timeout", "Technical timeout") && !this_plays$eventstring[ei] %eq% "Serve") this_ptid <- this_ptid + 1
                 serving_team_after_this_row <- NA_character_
@@ -777,7 +787,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         temp <- distinct(this_plays[!is.na(this_plays$serving_team), c("point_id", "serving_team")])
         if (any(duplicated(temp$point_id))) {
             warning("serving team inference failed: multiple serving teams in at least one point")
-            ##cat(str(temp[temp$point_id %in% temp$point_id[duplicated(temp$point_id)], ])) ##***
             temp <- temp[!temp$point_id %in% temp$point_id[duplicated(temp$point_id)], ]
         }
         chk <- nrow(this_plays)
