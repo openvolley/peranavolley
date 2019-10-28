@@ -73,7 +73,7 @@ pv_read <- function(filename, insert_technical_timeouts = FALSE, do_warn = FALSE
         }, error = function(e) {
             ## if we have an embedded newline in e.g. Notes field, the fromJSON will fail
             ## expect first line to be "PSVB" and all other lines to start with "XXXX~{" (with one to four X's)
-            unex <- !(x %eq% "PSVB" | grepl("^(DTAP|DTHP|E|M|MAP|MHP|PA|PH|PSVB|Q|SS|TA|TAP|TH|THP|TO|VE)~", x))
+            unex <- !(x %eq% "PSVB" | grepl("^(DTAP|DTHP|E|M|MAP|MHP|PA|PH|PSVB|Q|SS|TA|TAP|TH|THP|TO|VE|V)~", x))
             if (any(unex)) {
                 newx <- x
                 for (clps in rev(which(unex))) {
