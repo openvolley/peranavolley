@@ -421,8 +421,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             temp <- subevents[subevents$skill %eq% et, ]
             aidx <- this_plays$eventstring %eq% et
             if (et %eq% "Spike") {
-                ## some spike subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 1-5
-                all_subev <- c(111:115, 1000:1005, 1111:1115, 2000:2005, 2111:2115, 3000:3005, 3111:3115, 4000:4005, 4111:4115)
+                ## some spike subevents are of the form X11Y where X is the subevent 0-4 and Y is the setting zone 0-5 (0 = no setting zone)
+                all_subev <- c(110:115, 1000:1005, 1110:1115, 2000:2005, 2110:2115, 3000:3005, 3110:3115, 4000:4005, 4110:4115)
                 this_ss <- as.numeric(this_plays$subevent[aidx])
                 ## setting zone goes to attack_code
                 this_sz <- case_when(this_ss %in% all_subev ~ as.character(this_ss - floor(this_ss/10)*10))
@@ -786,7 +786,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         ## populate all rows with serving_team, point_won_by info
         temp <- distinct(this_plays[!is.na(this_plays$serving_team), c("point_id", "serving_team")])
         if (any(duplicated(temp$point_id))) {
-            warning("serving team inference failed: multiple serving teams in at least one point")
+            dudpts <- temp$point_id[duplicated(temp$point_id)]
+            warning("serving team inference failed in ", length(dudpts), " point", if (length(dudpts) > 1) "s", ": multiple serving teams (see point_id ", paste(dudpts, collapse = ", "), ")")
             temp <- temp[!temp$point_id %in% temp$point_id[duplicated(temp$point_id)], ]
         }
         chk <- nrow(this_plays)
