@@ -940,7 +940,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$end_coordinate <- dv_xy2index(plays$end_coordinate_x, plays$end_coordinate_y)
 
     ## and convert to zones, which will all be NA at this point
-    ## TODO cones
     plays$start_zone <- as.integer(plays$start_zone)
     plays$end_zone <- as.integer(plays$end_zone)
     plays$end_subzone <- as.character(plays$end_subzone)
@@ -951,7 +950,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     idx <- !is.na(plays$end_coordinate_x) & !is.na(plays$end_coordinate_y)
     plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
     plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
-    
+    ## don't yet populate cones automatically, because they depend on whether quicks should use M-type cones
+    ## plays$end_cone <- dv_xy2cone(plays$end_coordinate, start_zones = plays$start_zone)
 
     ##ggplot(xp$plays, aes(start_coordinate_x, start_coordinate_y, colour = as.factor(start_zone))) + geom_point() + datavolley::ggcourt()
     ##ggplot(xp$plays, aes(end_coordinate_x, end_coordinate_y, colour = as.factor(end_zone))) + geom_point() + datavolley::ggcourt()
