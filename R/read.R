@@ -947,11 +947,17 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = TRUE)
     idx <- !is.na(plays$start_coordinate_x) & !is.na(plays$start_coordinate_y) & !plays$skill %in% c("Serve", "Reception")
     plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = FALSE)
-    idx <- !is.na(plays$end_coordinate_x) & !is.na(plays$end_coordinate_y)
+    ## we don't want to assign an end_zone or end_subzone to an attack if it came off the block and back to the attacker's side of the court
+    idx <- !is.na(plays$end_coordinate_x) & !is.na(plays$end_coordinate_y) & !(plays$skill %eq% "Attack" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y))
     plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
     plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
-    ## don't yet populate cones automatically, because they depend on whether quicks should use M-type cones
+    ## assign those attacks "!" evaluation (blocked for reattack)
+    idx <- plays$skill %eq% "Attack" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y)
+    plays$evaluation_code[idx] <- "!"
+    plays$evaluation[idx] <- "Blocked for reattack"
+    ## don't yet populate cones automatically, because they depend on whether quicks should use middle-type cones
     ## plays$end_cone <- dv_xy2cone(plays$end_coordinate, start_zones = plays$start_zone)
+    plays$end_cone <- NA_integer_
 
     ##ggplot(xp$plays, aes(start_coordinate_x, start_coordinate_y, colour = as.factor(start_zone))) + geom_point() + datavolley::ggcourt()
     ##ggplot(xp$plays, aes(end_coordinate_x, end_coordinate_y, colour = as.factor(end_zone))) + geom_point() + datavolley::ggcourt()
