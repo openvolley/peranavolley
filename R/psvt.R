@@ -21,7 +21,7 @@ pt_read <- function(filename, raw_only = FALSE) {
 
 pt_parse <- function(x) {
     pparse <- function(z, df = TRUE) {
-        temp <- sub("^[A-Z]+~", "", z)
+        temp <- sub("^[A-Z[:digit:]]+~", "", z)
         if (grepl("^\\(?null\\)?", temp, ignore.case = TRUE)) {
             if (df) tibble() else NULL
         } else {
@@ -42,35 +42,41 @@ pt_parse <- function(x) {
     meta$template <- pparse_df(x[names(x) == "TMPL"])
 
     ## skills and their grades are in order
-    skx <- x[names(x) %in% c("SK", "G")]
-    skills <- tibble()
-    this_skill <- tibble()
-    this_grades <- tibble()
-    grades <- tibble()
-    for (xi in seq_along(skx)) {
-        if (names(skx)[xi] %eq% "SK") {
-            if (nrow(this_skill) > 0) {
-                skills <- bind_rows(skills, this_skill)
-                if (nrow(this_grades) > 0) {
-                    this_grades$skill_guid <- this_skill$guid
-                    grades <- bind_rows(grades, this_grades)
-                }
-            }
-            this_skill <- pparse_df(skx[[xi]])
-            this_grades <- tibble()
-        } else {
-            ## a grade to go with the last skill
-            this_grades <- bind_rows(this_grades, pparse_df(skx[[xi]]))
-        }
-    }
-    meta$skills <- skills
-    meta$grades <- grades
+##    skx <- x[names(x) %in% c("SK", "G")]
+##    skills <- tibble()
+##    this_skill <- tibble()
+##    this_grades <- tibble()
+##    grades <- tibble()
+##    for (xi in seq_along(skx)) {
+##        if (names(skx)[xi] %eq% "SK") {
+##            if (nrow(this_skill) > 0) {
+##                skills <- bind_rows(skills, this_skill)
+##                if (nrow(this_grades) > 0) {
+##                    this_grades$skill_guid <- this_skill$guid
+##                    grades <- bind_rows(grades, this_grades)
+##                }
+##            }
+##            this_skill <- pparse_df(skx[[xi]])
+##            this_grades <- tibble()
+##        } else {
+##            ## a grade to go with the last skill
+##            this_grades <- bind_rows(this_grades, pparse_df(skx[[xi]]))
+##        }
+##    }
+##    meta$skills <- skills
+    ##    meta$grades <- grades
+    meta$skills <- pparse_df(x[names(x) %in% "SK"])
+    meta$grades <- pparse_df(x[names(x) %in% "G"])
+    meta$subskills <- pparse_df(x[names(x) %in% "SSK"])
+    meta$subskills2 <- pparse_df(x[names(x) %in% "SSK2"])
     out$meta <- meta
     ## and finally the tags themselves
     ## "TAG~{\"tagDescription\":\"Pass - Error\",\"playerGuid\":\"\",\"skillGuid\":\"69F4E45B-3843-44FB-A48B-ABDD228131C5-2201-00000350FEA496F0\",\"subSkillGuid\":\"\",\"subSkill2Guid\":\"\",\"gradeGuid\":\"9EA8F3A4-94BA-4FE4-BFEE-A8DC269FAD3E-2201-00000350FEA71615\",\"videoName\":\"xyz\",\"playListOrder\":0,\"Guid\":\"000001\",\"VideoPosition\":1278.94,\"VideoThumbnailTime\":0,\"Duration\":5,\"selected\":1}"
     tx <- pparse_df(x[names(x) %in% "TAG"])
     tx <- left_join(tx, meta$skills %>% dplyr::select(skill = "name", "guid"), by = c(skillguid = "guid"))
     tx <- left_join(tx, meta$grades %>% dplyr::select(grade = "name", "guid"), by = c(gradeguid = "guid"))
+    tx <- left_join(tx, meta$subskills %>% dplyr::select(subskill = "name", "guid"), by = c(subskillguid = "guid"))
+    tx <- left_join(tx, meta$subskills2 %>% dplyr::select(subskill2 = "name", "guid"), by = c(subskill2guid = "guid"))
     out$tags <- tx
     out
 }
