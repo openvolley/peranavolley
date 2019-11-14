@@ -7,6 +7,10 @@ fixnames <- function(obj) {
     setNames(obj, nms)
 }
 
+rot_forward <- function(z, by = 1L) do_rot(z, abs(by))
+rot_backward <- function(z, by = 1L) do_rot(z, -abs(by))
+do_rot <- function(z, by) (((z+by)-1L) %% 6)+1L
+
 rot_one <- function(z) z[c(2:6, 1)]
 
 rot_p1 <- function(lineup, p1) {
@@ -74,3 +78,28 @@ join_messages <- function(msgs1, msgs2) {
 ##    plot(1:2, type = "n")
 ##    rasterImage(im, 1.2, 1.27, 1.8, 1.73)
 ##}
+
+b64gunz <- function(x) {
+    x <- base64enc::base64decode(x)
+    if (length(x) < 6 || !identical(x[5:6], as.raw(c(31, 8*16+11))))
+        stop("cannot read text")
+    ## first four bytes are the buffer size
+    rc <- rawConnection(x[seq_along(x)[-1:-4]])
+    z <- gzcon(rc)
+    readLines(z, warn = FALSE)
+}
+
+## same thing but writing to temporary file, so slower
+b64gunzf <- function(x) {
+    x <- base64enc::base64decode(x)
+    if (length(x) < 6 || !identical(x[5:6], as.raw(c(31, 8*16+11))))
+        stop("cannot read text")
+    ## first four bytes are the buffer size
+    tf <- tempfile()
+    on.exit(unlink(tf))
+    writeBin(x[5:length(x)], con = tf)
+    mygzcon <- gzfile(tf)
+    x <- readLines(mygzcon, warn = FALSE)
+    close(mygzcon)
+    x
+}
