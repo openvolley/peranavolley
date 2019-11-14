@@ -69,8 +69,8 @@ pt_parse <- function(x) {
     ## and finally the tags themselves
     ## "TAG~{\"tagDescription\":\"Pass - Error\",\"playerGuid\":\"\",\"skillGuid\":\"69F4E45B-3843-44FB-A48B-ABDD228131C5-2201-00000350FEA496F0\",\"subSkillGuid\":\"\",\"subSkill2Guid\":\"\",\"gradeGuid\":\"9EA8F3A4-94BA-4FE4-BFEE-A8DC269FAD3E-2201-00000350FEA71615\",\"videoName\":\"xyz\",\"playListOrder\":0,\"Guid\":\"000001\",\"VideoPosition\":1278.94,\"VideoThumbnailTime\":0,\"Duration\":5,\"selected\":1}"
     tx <- pparse_df(x[names(x) %in% "TAG"])
-    tx <- left_join(tx, meta$skills %>% dplyr::select(skill = "name", guid), by = c(skillguid = "guid"))
-    tx <- left_join(tx, meta$grades %>% dplyr::select(grade = "name", guid), by = c(gradeguid = "guid"))
+    tx <- left_join(tx, meta$skills %>% dplyr::select(skill = "name", "guid"), by = c(skillguid = "guid"))
+    tx <- left_join(tx, meta$grades %>% dplyr::select(grade = "name", "guid"), by = c(gradeguid = "guid"))
     out$tags <- tx
     out
 }
