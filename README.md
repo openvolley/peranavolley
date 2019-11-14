@@ -1,15 +1,15 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-[![lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 [![Travis-CI Build
 Status](https://travis-ci.org/raymondben/peranavolley.svg?branch=master)](https://travis-ci.org/raymondben/peranavolley)
 
 # peranavolley
 
-An R package for reading [Perana Sports VBStats](http://peranasports.com/software/vbstatshd/) volleyball
-scouting files. Note that this package is in a relatively early stage of development, and
-functionality may change without warning.
+An R package for reading [Perana Sports
+VBStats](http://peranasports.com/software/vbstatshd/) volleyball
+scouting files as well as [Perana Sports
+VideoTagger](http://peranasports.com/software/videotagger/) files.
 
 See also [datavolley](https://github.com/raymondben/datavolley), which
 provides similar functionality for reading DataVolley files into R. The
@@ -71,11 +71,11 @@ plays(x) %>% dplyr::filter(skill == "Attack") %>%
 #>  4 Canberra Heat Men's Murch Malachi             9       0.556
 #>  5 Canberra Heat Men's Nick Borgeaud             2       0.5  
 #>  6 Canberra Heat Men's Samuel Walker            30       0.467
-#>  7 UTSSU Men's         C Beasley                28       0.429
-#>  8 Canberra Heat Men's Keiran Ackhurst           5       0.4  
-#>  9 UTSSU Men's         Nathan Healey            31       0.387
-#> 10 UTSSU Men's         Adam Penman               3       0.333
-#> 11 Canberra Heat Men's Jordan Power             28       0.286
+#>  7 Canberra Heat Men's Keiran Ackhurst           5       0.4  
+#>  8 UTSSU Men's         C Beasley                28       0.393
+#>  9 UTSSU Men's         Adam Penman               3       0.333
+#> 10 UTSSU Men's         Nathan Healey            31       0.323
+#> 11 Canberra Heat Men's Jordan Power             28       0.214
 #> 12 UTSSU Men's         Artem Ipatyev            19       0.211
 #> 13 Canberra Heat Men's David Darcy              10       0.2  
 #> 14 UTSSU Men's         Alex Minchin              1       0    

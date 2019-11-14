@@ -14,12 +14,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-[![lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) 
 [![Travis-CI Build Status](https://travis-ci.org/raymondben/peranavolley.svg?branch=master)](https://travis-ci.org/raymondben/peranavolley)
 
 # peranavolley
 
-An R package for reading [Perana Sports VBStats](http://peranasports.com/software/vbstatshd/) volleyball scouting files. Note that this package is in a relatively early stage of development, and functionality may change without warning.
+An R package for reading [Perana Sports VBStats](http://peranasports.com/software/vbstatshd/) volleyball scouting files as well as [Perana Sports VideoTagger](http://peranasports.com/software/videotagger/) files.
 
 See also [datavolley](https://github.com/raymondben/datavolley), which provides similar functionality for reading DataVolley files into R. The conventions (data structures, variable naming, etc) used in the peranavolley package follow those of the datavolley package.
 
