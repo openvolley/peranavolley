@@ -8,7 +8,9 @@
 \usage{
 pv_tas_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
 
-pv_tas_live_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
+pv_tas_live_recode(x, remap = pv_tas_remap(),
+  home_team_rotation = NULL, visiting_team_rotation = NULL,
+  log_changes = FALSE)
 
 pv_tas_remap()
 }
@@ -18,6 +20,10 @@ pv_tas_remap()
 \item{remap}{list: a list with components "conditions" and "values" that define the remapping. See \code{\link{pv_tas_remap}} for an example}
 
 \item{log_changes}{logical: if \code{TRUE}, the returned object will have a "changes" attribute describing the changes that were made}
+
+\item{home_team_rotation}{string: fixed rotation of the home team, either "SHM" or "SMH". This will be used to infer missing attack \code{start_zone} values (assuming the standard attack by role - e.g. the default attack for an opposite is X6 when they are front row (except in P1 reception when it is X5), and X8 when they are back row). If \code{home_team_rotation} is \code{NULL} this will not be done}
+
+\item{visiting_team_rotation}{string: as for \code{home_team_rotation}, but for the visiting team}
 }
 \value{
 A modified version of \code{x}.

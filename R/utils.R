@@ -136,6 +136,8 @@ check_remap_ok <- function(remap) {
 #'
 #' @param x data.frame or tibble: a peranavolley object as returned by \code{pv_read}, or the plays component thereof
 #' @param remap list: a list with components "conditions" and "values" that define the remapping. See \code{\link{pv_tas_remap}} for an example
+#' @param home_team_rotation string: fixed rotation of the home team, either "SHM" or "SMH". This will be used to infer missing attack \code{start_zone} values (assuming the standard attack by role - e.g. the default attack for an opposite is X6 when they are front row (except in P1 reception when it is X5), and X8 when they are back row). If \code{home_team_rotation} is \code{NULL} this will not be done
+#' @param visiting_team_rotation string: as for \code{home_team_rotation}, but for the visiting team
 #' @param log_changes logical: if \code{TRUE}, the returned object will have a "changes" attribute describing the changes that were made
 #'
 #' @return A modified version of \code{x}.
@@ -240,7 +242,40 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
 
 #' @rdname pv_tas_recode
 #' @export
-pv_tas_live_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
+pv_tas_live_recode <- function(x, remap = pv_tas_remap(), home_team_rotation = NULL, visiting_team_rotation = NULL, log_changes = FALSE) {
+    if (!inherits(x, c("peranavolley"))) stop("x must be a peranavolley object")
+    ## if home or visiting team rotations have been supplied, use them to infer attack start positions
+    ## do this before calling pv_tas_recode, so that the right attack codes get assigned
+    rx <- NULL
+    vrx <- NULL
+    if (!is.null(home_team_rotation)) {
+        assert_that(is.string(home_team_rotation))
+        home_team_rotation <- match.arg(toupper(home_team_rotation), c("SHM", "SMH"))
+        if (home_team_rotation %in% c("SHM", "SMH")) {
+            rx <- infer_playing_positions_by_rotation(x$plays, rotation = home_team_rotation, method = "standard", team = "home")
+        }
+    }
+    if (!is.null(visiting_team_rotation)) {
+        assert_that(is.string(visiting_team_rotation))
+        visiting_team_rotation <- match.arg(toupper(visiting_team_rotation), c("SHM", "SMH"))
+        if (visiting_team_rotation %in% c("SHM", "SMH")) {
+            vrx <- infer_playing_positions_by_rotation(x$plays, rotation = visiting_team_rotation, method = "standard", team = "visiting")
+        }
+    }
+    rx <- bind_rows(rx, vrx)
+    if (!is.null(rx) && nrow(rx) > 0) {
+        rx$playing_position[rx$playing_position %eq% 5] <- 7L
+        rx$playing_position[rx$playing_position %eq% 6] <- 8L
+        rx$playing_position[rx$playing_position %eq% 1] <- 9L
+        temp <- distinct(rx[, c("match_id", "point_id", "player_id", "playing_position")])
+        chk0 <- nrow(x$plays)
+        x$plays <- left_join(x$plays, temp, by = c("match_id", "point_id", "player_id"))
+        if (nrow(x$plays) != chk0) warning("inferring player positions added ", nrow(x$plays) - chk0, " data rows")
+        ## now fill in missing attack start zones
+        idx <- x$plays$skill %eq% "Attack" & is.na(x$plays$start_zone)
+        x$plays$start_zone[idx] <-  x$plays$playing_position[idx]
+        x$plays <- dplyr::select(x$plays, -"playing_position")
+    }
     x <- pv_tas_recode(x, remap = remap, log_changes = log_changes)
     ## need to fix phase: first fix team_touch_id
     plays <- x$plays
@@ -477,3 +512,114 @@ list("Setter (high) dumps to freeball over" = list(conditions = tibble(skill = "
 #}
 ### backwards compatibility, unexported
 #ex_attack_code_remap <- pv_tas_attack_remap
+
+
+
+## internal functions needed for pv_tas_live_recode
+
+infer_playing_positions_by_rotation <- function(x, rotation, method = "standard", team = "both") {
+    assert_that(is.string(rotation))
+    rotation <- match.arg(toupper(rotation), c("SHM", "SMH"))
+    assert_that(is.string(method))
+    method <- match.arg(tolower(method), c("standard"))
+    assert_that(is.string(team))
+    team <- match.arg(tolower(team), c("both", "home", "visiting"))
+
+    if (team %in% c("both", "home")) {
+        hrx <- infer_roles_by_rotation(x, target_team = home_team(x), rotation = rotation)
+        hrx$point_id <- x$point_id
+        hrx$match_id <- x$match_id
+        hrx <- distinct(hrx)
+        hrx <- tidyr::gather(hrx, key = "position", value = "role", setdiff(names(hrx), c("point_id", "match_id")))
+        hrx$position <- sub("player_role", "", hrx$position, fixed = TRUE)
+        hrx$team <- home_team(x)
+        hrid <- tidyr::gather(distinct(x[, c("match_id", "point_id", paste0("home_player_id", 1:6))]), key = "position", value = "player_id", paste0("home_player_id", 1:6))
+        hrid$position <- sub("home_player_id", "", hrid$position, fixed = TRUE)
+        hrx <- left_join(hrx, hrid, by = c("match_id", "point_id", "position"))
+        hrx <- hrx %>% left_join(x %>% group_by_at(c("match_id", "point_id")) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$visiting_team %eq% .data$serving_team & .data$home_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
+    } else {
+        hrx <- NULL
+    }
+    if (team %in% c("both", "visiting")) {
+        vrx <- infer_roles_by_rotation(x, target_team = visiting_team(x), rotation = rotation)
+        vrx$point_id <- x$point_id
+        vrx$match_id <- x$match_id
+        vrx <- distinct(vrx)
+        vrx <- tidyr::gather(vrx, key = "position", value = "role", setdiff(names(vrx), c("point_id", "match_id")))
+        vrx$position <- sub("player_role", "", vrx$position, fixed = TRUE)
+        vrx$team <- visiting_team(x)
+        vrid <- tidyr::gather(distinct(x[, c("match_id", "point_id", paste0("visiting_player_id", 1:6))]), key = "position", value = "player_id", paste0("visiting_player_id", 1:6))
+        vrid$position <- sub("visiting_player_id", "", vrid$position, fixed = TRUE)
+        vrx <- left_join(vrx, vrid, by = c("match_id", "point_id", "position"))
+        vrx <- vrx %>% left_join(x %>% group_by_at(c("match_id", "point_id")) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$home_team %eq% .data$serving_team & .data$visiting_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
+    } else {
+        vrx <- NULL
+    }
+    ## TODO check for duplicate rows or other failures
+    rx <- bind_rows(hrx, vrx)
+    switch(method,
+           "standard" = mutate(rx, playing_position = case_when(.data$role %eq% "setter" & .data$position %in% c(2:4) ~ 2L,
+                                                                .data$role %eq% "outside" & .data$position %in% c(2:4) & !p1_reception ~ 4L,
+                                                                .data$role %eq% "outside" & .data$position %in% c(2:4) & p1_reception ~ 2L,
+                                                                .data$role %eq% "opposite" & .data$position %in% c(2:4) & !p1_reception ~ 2L,
+                                                                .data$role %eq% "opposite" & .data$position %in% c(2:4) & p1_reception ~ 4L,
+                                                                .data$role %eq% "middle" & .data$position %in% c(2:4) ~ 3L,
+                                                                .data$role %eq% "setter" & .data$position %in% c(1, 6, 5) ~ 1L,
+                                                                .data$role %eq% "outside" & .data$position %in% c(1, 6, 5) ~ 6L,
+                                                                .data$role %eq% "opposite" & .data$position %in% c(1, 6, 5) ~ 1L,
+                                                                .data$role %in% c("middle", "libero") & .data$position %in% c(1, 6, 5) ~ 5L)),
+           stop("unexpected method: ", method))
+}
+
+infer_roles_by_rotation <- function(x, target_team, rotation) {
+    is_target_team <- if (is.character(target_team)) function(z) z %eq% target_team else target_team
+    assert_that(is.function(is_target_team))
+    assert_that(is.string(rotation))
+    rotation <- match.arg(toupper(rotation), c("SHM", "SMH"))
+    rx <- matrix(NA_character_, nrow = nrow(x), ncol = 6)
+    ttidx <- is_target_team(x$home_team) & !is.na(x$home_setter_position)
+    for (sp in 1:6) {
+        ridx <- ttidx & x$home_setter_position %eq% sp
+        if (identical(rotation, "SHM")) {
+            rx[ridx, sp] <- "setter"
+            rx[ridx, rot_forward(sp, 1L)] <- "outside"
+            rx[ridx, rot_forward(sp, 2L)] <- "middle"
+            rx[ridx, rot_forward(sp, 3L)] <- "opposite"
+            rx[ridx, rot_forward(sp, 4L)] <- "outside"
+            rx[ridx, rot_forward(sp, 5L)] <- "middle"
+            ## except libero instead of middle in back court, but not when serving; but we don't care because this is just blockers
+        } else if (identical(rotation, "SMH")) {
+            rx[ridx, sp] <- "setter"
+            rx[ridx, rot_forward(sp, 1L)] <- "middle"
+            rx[ridx, rot_forward(sp, 2L)] <- "outside"
+            rx[ridx, rot_forward(sp, 3L)] <- "opposite"
+            rx[ridx, rot_forward(sp, 4L)] <- "middle"
+            rx[ridx, rot_forward(sp, 5L)] <- "outside"
+        } else {
+            stop("expecting rotation to be 'SMH' or 'SHM'")
+        }
+    }
+    ttidx <- is_target_team(x$visiting_team) & !is.na(x$visiting_setter_position)
+    for (sp in 1:6) {
+        ridx <- ttidx & x$visiting_setter_position %eq% sp
+        if (identical(rotation, "SHM")) {
+            rx[ridx, sp] <- "setter"
+            rx[ridx, rot_forward(sp, 1L)] <- "outside"
+            rx[ridx, rot_forward(sp, 2L)] <- "middle"
+            rx[ridx, rot_forward(sp, 3L)] <- "opposite"
+            rx[ridx, rot_forward(sp, 4L)] <- "outside"
+            rx[ridx, rot_forward(sp, 5L)] <- "middle"
+        } else if (identical(rotation, "SMH")) {
+            rx[ridx, sp] <- "setter"
+            rx[ridx, rot_forward(sp, 1L)] <- "middle"
+            rx[ridx, rot_forward(sp, 2L)] <- "outside"
+            rx[ridx, rot_forward(sp, 3L)] <- "opposite"
+            rx[ridx, rot_forward(sp, 4L)] <- "middle"
+            rx[ridx, rot_forward(sp, 5L)] <- "outside"
+        } else {
+            stop("expecting rotation to be 'SMH' or 'SHM'")
+        }
+    }
+    setNames(as.data.frame(rx, stringsAsFactors = FALSE), paste0("player_role", 1:6))
+}
+
