@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>A simple summary of a volleyball match — summary.peranavolley • peranavolley</title>
+<title>Write a Perana Sports tagger (psvt) data file — pt_write • peranavolley</title>
 
 
 <!-- jquery -->
@@ -35,8 +35,8 @@
 
 
 
-<meta property="og:title" content="A simple summary of a volleyball match — summary.peranavolley" />
-<meta property="og:description" content="A simple summary of a volleyball match" />
+<meta property="og:title" content="Write a Perana Sports tagger (psvt) data file — pt_write" />
+<meta property="og:description" content="This is somewhat experimental. It may be useful if one wants to read an existing file, modify the content, and re-write it back to a psvt file." />
 <meta name="twitter:card" content="summary" />
 
 
@@ -100,57 +100,40 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>A simple summary of a volleyball match</h1>
+    <h1>Write a Perana Sports tagger (psvt) data file</h1>
     
-    <div class="hidden name"><code>summary.peranavolley.Rd</code></div>
+    <div class="hidden name"><code>pt_write.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>A simple summary of a volleyball match</p>
+    <p>This is somewhat experimental. It may be useful if one wants to read an existing file, modify the content, and re-write it back to a psvt file.</p>
     </div>
 
-    <pre class="usage"><span class='co'># S3 method for peranavolley</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>object</span>, <span class='no'>...</span>)</pre>
+    <pre class="usage"><span class='fu'>pt_write</span>(<span class='no'>x</span>, <span class='no'>filename</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>object</th>
-      <td><p>peranavolley: peranavolley object as returned by <code>pv_read</code></p></td>
+      <th>x</th>
+      <td><p>character: data to write. See e.g the <code>raw</code> component of the object returned by <code><a href='pt_read.html'>pt_read</a></code></p></td>
     </tr>
     <tr>
-      <th>...</th>
-      <td><p>: additional arguments (currently these have no effect)</p></td>
+      <th>filename</th>
+      <td><p>string: path to file</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>list of summary items</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <div class='dont-index'><p><code><a href='pv_read.html'>pv_read</a></code></p></div>
+    <div class='dont-index'><p><code><a href='pt_read.html'>pt_read</a></code></p></div>
 
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='no'>x</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='pv_read.html'>pv_read</a></span>(<span class='fu'><a href='pv_example_file.html'>pv_example_file</a></span>())
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>x</span>)</div><div class='output co'>#&gt; Match summary:
-#&gt; Date: 2017-09-23
-#&gt; League: 2017 AVL Men's
-#&gt; Teams: Canberra Heat Men's
-#&gt;        vs
-#&gt;        UTSSU Men's
-#&gt; Result: 3-0 (25-23, 31-29, 25-15)
-#&gt; Duration: unknown</div><div class='input'>
-</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
       <li><a href="#arguments">Arguments</a></li>
-      <li><a href="#value">Value</a></li>
       <li><a href="#see-also">See also</a></li>
-      <li><a href="#examples">Examples</a></li>
     </ul>
 
   </div>

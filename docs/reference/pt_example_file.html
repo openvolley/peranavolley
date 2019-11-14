@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>A simple summary of a volleyball match — summary.peranavolley • peranavolley</title>
+<title>Example psvt data files provided as part of the peranavolley package — pt_example_file • peranavolley</title>
 
 
 <!-- jquery -->
@@ -35,8 +35,8 @@
 
 
 
-<meta property="og:title" content="A simple summary of a volleyball match — summary.peranavolley" />
-<meta property="og:description" content="A simple summary of a volleyball match" />
+<meta property="og:title" content="Example psvt data files provided as part of the peranavolley package — pt_example_file" />
+<meta property="og:description" content="Example psvt data files provided as part of the peranavolley package" />
 <meta name="twitter:card" content="summary" />
 
 
@@ -100,49 +100,38 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>A simple summary of a volleyball match</h1>
+    <h1>Example psvt data files provided as part of the peranavolley package</h1>
     
-    <div class="hidden name"><code>summary.peranavolley.Rd</code></div>
+    <div class="hidden name"><code>pt_example_file.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>A simple summary of a volleyball match</p>
+    <p>Example psvt data files provided as part of the peranavolley package</p>
     </div>
 
-    <pre class="usage"><span class='co'># S3 method for peranavolley</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>object</span>, <span class='no'>...</span>)</pre>
+    <pre class="usage"><span class='fu'>pt_example_file</span>(<span class='kw'>choice</span> <span class='kw'>=</span> <span class='fl'>1</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>object</th>
-      <td><p>peranavolley: peranavolley object as returned by <code>pv_read</code></p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>: additional arguments (currently these have no effect)</p></td>
+      <th>choice</th>
+      <td><p>numeric: which data file to return?</p><ul>
+<li><p>1 - trivial volleyball example file</p></li>
+</ul></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>list of summary items</p>
+    <p>path to the file</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <div class='dont-index'><p><code><a href='pv_read.html'>pv_read</a></code></p></div>
+    <div class='dont-index'><p><code><a href='pt_read.html'>pt_read</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='no'>x</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='pv_read.html'>pv_read</a></span>(<span class='fu'><a href='pv_example_file.html'>pv_example_file</a></span>())
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>x</span>)</div><div class='output co'>#&gt; Match summary:
-#&gt; Date: 2017-09-23
-#&gt; League: 2017 AVL Men's
-#&gt; Teams: Canberra Heat Men's
-#&gt;        vs
-#&gt;        UTSSU Men's
-#&gt; Result: 3-0 (25-23, 31-29, 25-15)
-#&gt; Duration: unknown</div><div class='input'>
-</div></pre>
+    <pre class="examples"><div class='input'><span class='no'>myfile</span> <span class='kw'>&lt;-</span> <span class='fu'>pt_example_file</span>()
+<span class='no'>x</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='pt_read.html'>pt_read</a></span>(<span class='no'>myfile</span>)</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
