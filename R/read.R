@@ -203,8 +203,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     meta$players_h <- parse_players(pparse_df(x[names(x) %eq% "PH"]))
     meta$players_v <- parse_players(pparse_df(x[names(x) %eq% "PA"]))
     if (length(intersect(meta$players_h$player_id, meta$players_v$player_id)))
-        stop("non-unique player ids")
-
+        stop("at least one player id on the home team player list is also on the visiting team player list")
     ## team player numbers (PlayerTeamLink)
     ## homeaway~player_number~guid
     parse_plnum <- function(z) {
