@@ -202,6 +202,13 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     ## PH = home player, PA = away player
     meta$players_h <- parse_players(pparse_df(x[names(x) %eq% "PH"]))
     meta$players_v <- parse_players(pparse_df(x[names(x) %eq% "PA"]))
+
+    ## "match players" in MHP, MAP sections
+    ## these are the players that were actually part of the team list for this match, so remove any players from team lists that aren't in these
+    temp <- sub("MAP~", "", x[names(x) %eq% "MAP"], fixed = TRUE)
+    meta$players_v <- meta$players_v[meta$players_v$player_id %in% temp, ]
+    temp <- sub("MHP~", "", x[names(x) %eq% "MHP"], fixed = TRUE)
+    meta$players_h <- meta$players_h[meta$players_h$player_id %in% temp, ]
     if (length(intersect(meta$players_h$player_id, meta$players_v$player_id)))
         stop("at least one player id on the home team player list is also on the visiting team player list")
     ## team player numbers (PlayerTeamLink)
@@ -250,9 +257,6 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     chk <- nrow(meta$players_v)
     meta$players_v <- left_join(meta$players_v, temp, by = "player_id")
     if (nrow(meta$players_v) != chk) stop("error with visiting player lineup")
-
-    ## "match players"
-    ## MHP, MAP ??
 
     ## drill players
     ## DTHP, DTAP ??
@@ -951,7 +955,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
     plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
     ## assign those attacks "!" evaluation (blocked for reattack)
-    idx <- plays$skill %eq% "Attack" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y)
+    idx <- plays$skill %eq% "Attack" & plays$evaluation %eq% "Spike in play" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y)
     plays$evaluation_code[idx] <- "!"
     plays$evaluation[idx] <- "Blocked for reattack"
     ## don't yet populate cones automatically, because they depend on whether quicks should use middle-type cones
