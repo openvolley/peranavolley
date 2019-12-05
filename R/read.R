@@ -842,205 +842,209 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         plays <- bind_rows(plays, this_plays)
     }
     ## some processing on all plays
-    plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
-    ## actually videoduration appears always to be zero
-    try(plays$video_time <- as.integer(difftime(plays$time, video_start_time, units = "secs"), silent = TRUE))
-    ## "subevent2" "subevent" "eventid" "row" "userdefined01"
-    plays <- dplyr::select(plays, -"eventtype")
-    plays <- mutate(plays, match_id = meta$match_id,
-                    home_team = this_home_team, visiting_team = this_visiting_team,
-                    home_team_id = meta$teams$team_id[1], visiting_team_id = meta$teams$team_id[2],
-                    custom_code = NA_character_,
-                    skill = case_when(skill %eq% "Defense" ~ "Dig",
-                                      skill %eq% "Pass" ~ "Reception",
-                                      skill %eq% "Spike" ~ "Attack",
-                                      TRUE ~ skill),
-                    winning_attack = case_when(skill %eq% "Attack" & win_loss > 0 ~ TRUE,
-                                               TRUE ~ FALSE))
-
-    ##plays %>% count(skill, eventgrade, evaluation)
-    ##temp <- setNames(read.csv(text=gsub("|", ", ", plays$ballstartstring, fixed = TRUE), header = FALSE), c("x", "y", "z"))
-    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballstartstring))
-    temp[temp %in% c("", "NA")] <- "0, 0"
-    if (any(grepl("|", temp, fixed = TRUE))) {
-        warning("unexpected format of ballstartstring, skipping")
+    if (nrow(plays) < 1) {
+        warning("file contains no events (no play actions)")
     } else {
-        temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
-        zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
-        temp$x[zidx] <- NA_real_
-        temp$y[zidx] <- NA_real_
-        plays$start_coordinate_x <- temp$x*0.03 + 0.5
-        plays$start_coordinate_y <- (200-temp$y)*0.03 + 0.5
-    }
-    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballmidstring))
-    temp[temp %in% c("", "NA")] <- "0, 0"
-    if (any(grepl("|", temp, fixed = TRUE))) {
-        warning("unexpected format of ballmidstring, skipping")
-    } else {
-        temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
-        zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
-        temp$x[zidx] <- NA_real_
-        temp$y[zidx] <- NA_real_
-        plays$mid_coordinate_x <- temp$x*0.03 + 0.5
-        plays$mid_coordinate_y <- (200-temp$y)*0.03 + 0.5
-    }
-    temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballendstring))
-    temp[temp %in% c("", "NA")] <- "0, 0"
-    if (any(grepl("|", temp, fixed = TRUE))) {
-        warning("unexpected format of ballendstring, skipping")
-        cat(plays$ballendstring, "\n", sep = "#")
-    } else {
-        temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
-        zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
-        temp$x[zidx] <- NA_real_
-        temp$y[zidx] <- NA_real_
-        plays$end_coordinate_x <- temp$x*0.03 + 0.5
-        plays$end_coordinate_y <- (200-temp$y)*0.03 + 0.5
-    }
-    ## check that e.g. both serve and reception have start = serve loc and end = reception loc
-    ## if a reception skill has coordinates entered, then these give the pass loc (start, should same as serve end loc) and set loc (end, should be same as set loc start if it was entered)
-    ## DV uses set end loc as the location of the set
-    ## so any sets scouted with coordinates need to have the start coordinate transferred to the end coordinate
-    idx <- plays$skill %eq% "Set" & !is.na(plays$end_coordinate_x)
-    plays$end_coordinate_x[idx] <- plays$start_coordinate_x[idx]
-    plays$end_coordinate_y[idx] <- plays$start_coordinate_y[idx]
-    ## any receptions scouted with coordinates, transfer reception end coords (i.e. set location) to set end coords if set does not already have them
-    idx <- plays$skill %eq% "Set" & lag(plays$skill) %eq% "Reception" & lag(plays$team) %eq% plays$team & is.na(plays$end_coordinate_x) & !is.na(lag(plays$end_coordinate_x))
-    plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
-    plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
-    ## remove set start coords
-    idx <- plays$skill %eq% "Set" & !is.na(plays$start_coordinate_x)
-    plays$start_coordinate_x[idx] <- NA
-    plays$start_coordinate_y[idx] <- NA
-    ## if reception coords entered but serve not, transfer to serve
-    idx <- which(plays$skill %eq% "Reception" & !is.na(plays$start_coordinate_x) & lag(plays$skill) %eq% "Serve" & is.na(lag(plays$start_coordinate_x)))
-    plays$start_coordinate_x[idx-1] <- plays$start_coordinate_x[idx]
-    plays$start_coordinate_y[idx-1] <- plays$start_coordinate_y[idx]
-    plays$mid_coordinate_x[idx-1] <- plays$mid_coordinate_x[idx]
-    plays$mid_coordinate_y[idx-1] <- plays$mid_coordinate_y[idx]
-    plays$end_coordinate_x[idx-1] <- plays$end_coordinate_x[idx]
-    plays$end_coordinate_y[idx-1] <- plays$end_coordinate_y[idx]
-    ## now remove all reception coords
-    idx <- plays$skill %eq% "Reception"
-    plays$start_coordinate_x[idx] <- NA
-    plays$start_coordinate_y[idx] <- NA
-    plays$mid_coordinate_x[idx] <- NA
-    plays$mid_coordinate_y[idx] <- NA
-    plays$end_coordinate_x[idx] <- NA
-    plays$end_coordinate_y[idx] <- NA
-    ## populate reception with serve coords
-    idx <- plays$skill %eq% "Reception" & lag(plays$skill) %eq% "Serve" & !lag(plays$team) %eq% plays$team ##& is.na(plays$start_coordinate_x) & !is.na(lag(plays$start_coordinate_x))
-    plays$start_coordinate_x[idx] <- lag(plays$start_coordinate_x)[idx]
-    plays$start_coordinate_y[idx] <- lag(plays$start_coordinate_y)[idx]
-    plays$mid_coordinate_x[idx] <- lag(plays$mid_coordinate_x)[idx]
-    plays$mid_coordinate_y[idx] <- lag(plays$mid_coordinate_y)[idx]
-    plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
-    plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
+        plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
+        ## actually videoduration appears always to be zero
+        try(plays$video_time <- difftime(plays$time, video_start_time, units = "secs"), silent = TRUE)
+        ## "subevent2" "subevent" "eventid" "row" "userdefined01"
+        plays <- dplyr::select(plays, -"eventtype")
+        plays <- mutate(plays, match_id = meta$match_id,
+                        home_team = this_home_team, visiting_team = this_visiting_team,
+                        home_team_id = meta$teams$team_id[1], visiting_team_id = meta$teams$team_id[2],
+                        custom_code = NA_character_,
+                        skill = case_when(skill %eq% "Defense" ~ "Dig",
+                                          skill %eq% "Pass" ~ "Reception",
+                                          skill %eq% "Spike" ~ "Attack",
+                                          TRUE ~ skill),
+                        winning_attack = case_when(skill %eq% "Attack" & win_loss > 0 ~ TRUE,
+                                                   TRUE ~ FALSE))
 
-    ## convert everything to single-index coordinates, too
-    plays$start_coordinate <- dv_xy2index(plays$start_coordinate_x, plays$start_coordinate_y)
-    plays$mid_coordinate <- dv_xy2index(plays$mid_coordinate_x, plays$mid_coordinate_y)
-    plays$end_coordinate <- dv_xy2index(plays$end_coordinate_x, plays$end_coordinate_y)
-
-    ## and convert to zones, which will all be NA at this point
-    plays$start_zone <- as.integer(plays$start_zone)
-    plays$end_zone <- as.integer(plays$end_zone)
-    plays$end_subzone <- as.character(plays$end_subzone)
-    idx <- !is.na(plays$start_coordinate_x) & !is.na(plays$start_coordinate_y) & plays$skill %in% c("Serve", "Reception")
-    plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = TRUE)
-    idx <- !is.na(plays$start_coordinate_x) & !is.na(plays$start_coordinate_y) & !plays$skill %in% c("Serve", "Reception")
-    plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = FALSE)
-    ## we don't want to assign an end_zone or end_subzone to an attack if it came off the block and back to the attacker's side of the court
-    idx <- !is.na(plays$end_coordinate_x) & !is.na(plays$end_coordinate_y) & !(plays$skill %eq% "Attack" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y))
-    plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
-    plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
-    ## assign those attacks "!" evaluation (blocked for reattack)
-    idx <- plays$skill %eq% "Attack" & plays$evaluation %eq% "Spike in play" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y)
-    plays$evaluation_code[idx] <- "!"
-    plays$evaluation[idx] <- "Blocked for reattack"
-    ## don't yet populate cones automatically, because they depend on whether quicks should use middle-type cones
-    ## plays$end_cone <- dv_xy2cone(plays$end_coordinate, start_zones = plays$start_zone)
-    plays$end_cone <- NA_integer_
-
-    ##ggplot(xp$plays, aes(start_coordinate_x, start_coordinate_y, colour = as.factor(start_zone))) + geom_point() + datavolley::ggcourt()
-    ##ggplot(xp$plays, aes(end_coordinate_x, end_coordinate_y, colour = as.factor(end_zone))) + geom_point() + datavolley::ggcourt()
-
-    ##if (FALSE) {
-    ##    plays <- expand.grid(start_coordinate_x = seq(0.2, 3.8, by = 0.01), start_coordinate_y = seq(0.2, 6.7, by = 0.01))
-    ##    plays$skill <- "x"
-    ##    plays <- mutate(plays, start_zone = case_when(is.na(.data$start_coordinate_x) | is.na(.data$start_coordinate_y) ~ NA_integer_,
-    ##                                              .data$skill %in% c("Serve", "Reception") ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = TRUE),
-    ##                                              TRUE ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = FALSE)))
-    ##    ggplot(plays, aes(start_coordinate_x, start_coordinate_y, fill = as.factor(start_zone))) + geom_tile() + datavolley::ggcourt()
-    ##
-    ##    plays$skill <- "Serve"
-    ##    plays <- mutate(plays, start_zone = case_when(is.na(.data$start_coordinate_x) | is.na(.data$start_coordinate_y) ~ NA_integer_,
-    ##                                              .data$skill %in% c("Serve", "Reception") ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = TRUE),
-    ##                                              TRUE ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = FALSE)))
-    ##    ggplot(plays, aes(start_coordinate_x, start_coordinate_y, fill = as.factor(start_zone))) + geom_tile() + datavolley::ggcourt()
-    ##}
-
-    for (pn in 1:6) {
-        plays[[paste0("home_p", pn)]] <- dmapvalues(plays[[paste0("home_player_id", pn)]], meta$players_h$player_id, meta$players_h$number)
-        plays[[paste0("visiting_p", pn)]] <- dmapvalues(plays[[paste0("visiting_player_id", pn)]], meta$players_v$player_id, meta$players_v$number)
-    }
-
-    ## add team_touch_id - an identifier of consecutive touches by same team in same point - e.g. a dig-set-attack sequence by one team is a "team touch"
-    tid <- 0
-    temp_ttid <- rep(NA, nrow(plays))
-    temp_ttid[1] <- tid
-    temp_team <- plays$team_id
-    temp_ptid <- plays$point_id
-    for (k in seq_len(nrow(plays))[-1]) {
-        if (!identical(temp_team[k], temp_team[k-1]) || !identical(temp_ptid[k], temp_ptid[k-1]))  {
-            tid <- tid+1
+        ##plays %>% count(skill, eventgrade, evaluation)
+        ##temp <- setNames(read.csv(text=gsub("|", ", ", plays$ballstartstring, fixed = TRUE), header = FALSE), c("x", "y", "z"))
+        temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballstartstring))
+        temp[temp %in% c("", "NA")] <- "0, 0"
+        if (any(grepl("|", temp, fixed = TRUE))) {
+            warning("unexpected format of ballstartstring, skipping")
+        } else {
+            temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
+            zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
+            temp$x[zidx] <- NA_real_
+            temp$y[zidx] <- NA_real_
+            plays$start_coordinate_x <- temp$x*0.03 + 0.5
+            plays$start_coordinate_y <- (200-temp$y)*0.03 + 0.5
         }
-        temp_ttid[k] <- tid
+        temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballmidstring))
+        temp[temp %in% c("", "NA")] <- "0, 0"
+        if (any(grepl("|", temp, fixed = TRUE))) {
+            warning("unexpected format of ballmidstring, skipping")
+        } else {
+            temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
+            zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
+            temp$x[zidx] <- NA_real_
+            temp$y[zidx] <- NA_real_
+            plays$mid_coordinate_x <- temp$x*0.03 + 0.5
+            plays$mid_coordinate_y <- (200-temp$y)*0.03 + 0.5
+        }
+        temp <- str_trim(gsub("\\|0[[:space:]]*$", "", plays$ballendstring))
+        temp[temp %in% c("", "NA")] <- "0, 0"
+        if (any(grepl("|", temp, fixed = TRUE))) {
+            warning("unexpected format of ballendstring, skipping")
+            cat(plays$ballendstring, "\n", sep = "#")
+        } else {
+            temp <- setNames(read.csv(text = temp, header = FALSE), c("x", "y"))
+            zidx <- abs(temp$x) < 0.001 & abs(temp$y) < 0.001
+            temp$x[zidx] <- NA_real_
+            temp$y[zidx] <- NA_real_
+            plays$end_coordinate_x <- temp$x*0.03 + 0.5
+            plays$end_coordinate_y <- (200-temp$y)*0.03 + 0.5
+        }
+        ## check that e.g. both serve and reception have start = serve loc and end = reception loc
+        ## if a reception skill has coordinates entered, then these give the pass loc (start, should same as serve end loc) and set loc (end, should be same as set loc start if it was entered)
+        ## DV uses set end loc as the location of the set
+        ## so any sets scouted with coordinates need to have the start coordinate transferred to the end coordinate
+        idx <- plays$skill %eq% "Set" & !is.na(plays$end_coordinate_x)
+        plays$end_coordinate_x[idx] <- plays$start_coordinate_x[idx]
+        plays$end_coordinate_y[idx] <- plays$start_coordinate_y[idx]
+        ## any receptions scouted with coordinates, transfer reception end coords (i.e. set location) to set end coords if set does not already have them
+        idx <- plays$skill %eq% "Set" & lag(plays$skill) %eq% "Reception" & lag(plays$team) %eq% plays$team & is.na(plays$end_coordinate_x) & !is.na(lag(plays$end_coordinate_x))
+        plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
+        plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
+        ## remove set start coords
+        idx <- plays$skill %eq% "Set" & !is.na(plays$start_coordinate_x)
+        plays$start_coordinate_x[idx] <- NA
+        plays$start_coordinate_y[idx] <- NA
+        ## if reception coords entered but serve not, transfer to serve
+        idx <- which(plays$skill %eq% "Reception" & !is.na(plays$start_coordinate_x) & lag(plays$skill) %eq% "Serve" & is.na(lag(plays$start_coordinate_x)))
+        plays$start_coordinate_x[idx-1] <- plays$start_coordinate_x[idx]
+        plays$start_coordinate_y[idx-1] <- plays$start_coordinate_y[idx]
+        plays$mid_coordinate_x[idx-1] <- plays$mid_coordinate_x[idx]
+        plays$mid_coordinate_y[idx-1] <- plays$mid_coordinate_y[idx]
+        plays$end_coordinate_x[idx-1] <- plays$end_coordinate_x[idx]
+        plays$end_coordinate_y[idx-1] <- plays$end_coordinate_y[idx]
+        ## now remove all reception coords
+        idx <- plays$skill %eq% "Reception"
+        plays$start_coordinate_x[idx] <- NA
+        plays$start_coordinate_y[idx] <- NA
+        plays$mid_coordinate_x[idx] <- NA
+        plays$mid_coordinate_y[idx] <- NA
+        plays$end_coordinate_x[idx] <- NA
+        plays$end_coordinate_y[idx] <- NA
+        ## populate reception with serve coords
+        idx <- plays$skill %eq% "Reception" & lag(plays$skill) %eq% "Serve" & !lag(plays$team) %eq% plays$team ##& is.na(plays$start_coordinate_x) & !is.na(lag(plays$start_coordinate_x))
+        plays$start_coordinate_x[idx] <- lag(plays$start_coordinate_x)[idx]
+        plays$start_coordinate_y[idx] <- lag(plays$start_coordinate_y)[idx]
+        plays$mid_coordinate_x[idx] <- lag(plays$mid_coordinate_x)[idx]
+        plays$mid_coordinate_y[idx] <- lag(plays$mid_coordinate_y)[idx]
+        plays$end_coordinate_x[idx] <- lag(plays$end_coordinate_x)[idx]
+        plays$end_coordinate_y[idx] <- lag(plays$end_coordinate_y)[idx]
+
+        ## convert everything to single-index coordinates, too
+        plays$start_coordinate <- dv_xy2index(plays$start_coordinate_x, plays$start_coordinate_y)
+        plays$mid_coordinate <- dv_xy2index(plays$mid_coordinate_x, plays$mid_coordinate_y)
+        plays$end_coordinate <- dv_xy2index(plays$end_coordinate_x, plays$end_coordinate_y)
+
+        ## and convert to zones, which will all be NA at this point
+        plays$start_zone <- as.integer(plays$start_zone)
+        plays$end_zone <- as.integer(plays$end_zone)
+        plays$end_subzone <- as.character(plays$end_subzone)
+        idx <- !is.na(plays$start_coordinate_x) & !is.na(plays$start_coordinate_y) & plays$skill %in% c("Serve", "Reception")
+        plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = TRUE)
+        idx <- !is.na(plays$start_coordinate_x) & !is.na(plays$start_coordinate_y) & !plays$skill %in% c("Serve", "Reception")
+        plays$start_zone[idx] <- xy2zone(plays$start_coordinate_x[idx], plays$start_coordinate_y[idx], as_for_serve = FALSE)
+        ## we don't want to assign an end_zone or end_subzone to an attack if it came off the block and back to the attacker's side of the court
+        idx <- !is.na(plays$end_coordinate_x) & !is.na(plays$end_coordinate_y) & !(plays$skill %eq% "Attack" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y))
+        plays$end_zone[idx] <- xy2zone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx], as_for_serve = FALSE)
+        plays$end_subzone[idx] <- xy2subzone(plays$end_coordinate_x[idx], plays$end_coordinate_y[idx])
+        ## assign those attacks "!" evaluation (blocked for reattack)
+        idx <- plays$skill %eq% "Attack" & plays$evaluation %eq% "Spike in play" & ((plays$start_coordinate_y > 3.5 & plays$end_coordinate_y > 3.5) | (plays$start_coordinate_y < 3.5 & plays$end_coordinate_y < 3.5)) & !is.na(plays$mid_coordinate_y)
+        plays$evaluation_code[idx] <- "!"
+        plays$evaluation[idx] <- "Blocked for reattack"
+        ## don't yet populate cones automatically, because they depend on whether quicks should use middle-type cones
+        ## plays$end_cone <- dv_xy2cone(plays$end_coordinate, start_zones = plays$start_zone)
+        plays$end_cone <- NA_integer_
+
+        ##ggplot(xp$plays, aes(start_coordinate_x, start_coordinate_y, colour = as.factor(start_zone))) + geom_point() + datavolley::ggcourt()
+        ##ggplot(xp$plays, aes(end_coordinate_x, end_coordinate_y, colour = as.factor(end_zone))) + geom_point() + datavolley::ggcourt()
+
+        ##if (FALSE) {
+        ##    plays <- expand.grid(start_coordinate_x = seq(0.2, 3.8, by = 0.01), start_coordinate_y = seq(0.2, 6.7, by = 0.01))
+        ##    plays$skill <- "x"
+        ##    plays <- mutate(plays, start_zone = case_when(is.na(.data$start_coordinate_x) | is.na(.data$start_coordinate_y) ~ NA_integer_,
+        ##                                              .data$skill %in% c("Serve", "Reception") ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = TRUE),
+        ##                                              TRUE ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = FALSE)))
+        ##    ggplot(plays, aes(start_coordinate_x, start_coordinate_y, fill = as.factor(start_zone))) + geom_tile() + datavolley::ggcourt()
+        ##
+        ##    plays$skill <- "Serve"
+        ##    plays <- mutate(plays, start_zone = case_when(is.na(.data$start_coordinate_x) | is.na(.data$start_coordinate_y) ~ NA_integer_,
+        ##                                              .data$skill %in% c("Serve", "Reception") ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = TRUE),
+        ##                                              TRUE ~ xy2zone(.data$start_coordinate_x, .data$start_coordinate_y, as_for_serve = FALSE)))
+        ##    ggplot(plays, aes(start_coordinate_x, start_coordinate_y, fill = as.factor(start_zone))) + geom_tile() + datavolley::ggcourt()
+        ##}
+
+        for (pn in 1:6) {
+            plays[[paste0("home_p", pn)]] <- dmapvalues(plays[[paste0("home_player_id", pn)]], meta$players_h$player_id, meta$players_h$number)
+            plays[[paste0("visiting_p", pn)]] <- dmapvalues(plays[[paste0("visiting_player_id", pn)]], meta$players_v$player_id, meta$players_v$number)
+        }
+
+        ## add team_touch_id - an identifier of consecutive touches by same team in same point - e.g. a dig-set-attack sequence by one team is a "team touch"
+        tid <- 0
+        temp_ttid <- rep(NA, nrow(plays))
+        temp_ttid[1] <- tid
+        temp_team <- plays$team_id
+        temp_ptid <- plays$point_id
+        for (k in seq_len(nrow(plays))[-1]) {
+            if (!identical(temp_team[k], temp_team[k-1]) || !identical(temp_ptid[k], temp_ptid[k-1]))  {
+                tid <- tid+1
+            }
+            temp_ttid[k] <- tid
+        }
+        plays$team_touch_id <- temp_ttid
+        plays$phase <- datavolley::play_phase(plays)
+
+        ## propagate serve skill_type to reception
+        plays <- mutate(plays, skill_type = case_when(.data$skill %eq% "Reception" & is.na(.data$skill_type) & lag(.data$skill) %eq% "Serve" & !is.na(lag(.data$skill_type)) ~ sub("serve", "serve reception", lag(.data$skill_type)), TRUE ~ .data$skill_type))
+        ## TODO other skills here too
+
+        ## populate empty skill_type with e.g. "Unknown serve reception type"
+        idx <- is.na(plays$skill_type) & !is.na(plays$skill) & !plays$skill %in% c("Substitution", "Timeout", "Technical timeout", "Rotation error", "Sanction")
+        plays$skill_type[idx] <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill[idx])), " type")
+
+        ## num_players on block, and also propagated back one to the attack
+        ##    plays$num_players_numeric <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ 1L,
+        ##                                           plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ 2L, ## actually this is 2 or 3 players
+        ##                                           TRUE ~ plays$num_players_numeric)
+        ##    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players_numeric),
+        ##                                           TRUE ~ plays$num_players_numeric)
+        ##    plays$num_players <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ "1 player block",
+        ##                                   plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ "Multiplayer block",
+        ##                                   TRUE ~ plays$num_players)
+        ##    plays$num_players <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players),
+        ##                                   TRUE ~ plays$num_players)
+        ## number of blockers now comes from attacks
+        plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & plays$subevent2 %eq% 1 ~ 0L,
+                                               plays$skill %eq% "Attack" & plays$subevent2 %eq% 2 ~ 1L,
+                                               plays$skill %eq% "Attack" & plays$subevent2 %eq% 3 ~ 2L,
+                                               plays$skill %eq% "Attack" & plays$subevent2 %eq% 4 ~ 3L,
+                                               TRUE ~ as.integer(plays$num_players_numeric))
+        plays$num_players <- case_when(plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 0 ~ "No block",
+                                       plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 1 ~ "1 player block",
+                                       plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 2 ~ "2 player block",
+                                       plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 3 ~ "3 player block",
+                                       TRUE ~ as.character(plays$num_players))
+
+        ## these cols present but not populated (special_code, num_players, num_players_numeric skill_type skill_subtype partly pop)
+        ## "attack_code" "attack_description" "set_code"
+        ## [17] "set_description" "set_type" "start_zone" "end_zone"
+        ## [21] "end_subzone" "num_players" "num_players_numeric"
+        ## [25] "special_code" "point"
+
+        nms <- c("match_id", "point_id", "time", "video_time", "code", "team", "player_number", "player_name", "player_id", "skill", "skill_type", "evaluation_code", "evaluation", "attack_code", "attack_description", "set_code", "set_description", "set_type", "start_zone", "end_zone", "end_subzone", "skill_subtype", "num_players", "num_players_numeric", "special_code", "timeout", "end_of_set", "substitution", "point", "home_team_score", "visiting_team_score", "home_setter_position", "visiting_setter_position", "custom_code", "file_line_number", "home_p1", "home_p2", "home_p3", "home_p4", "home_p5", "home_p6", "visiting_p1", "visiting_p2", "visiting_p3", "visiting_p4", "visiting_p5", "visiting_p6", "start_coordinate", "mid_coordinate", "end_coordinate", "start_coordinate_x", "start_coordinate_y", "mid_coordinate_x", "mid_coordinate_y", "end_coordinate_x", "end_coordinate_y", "home_player_id1", "home_player_id2", "home_player_id3", "home_player_id4", "home_player_id5", "home_player_id6", "visiting_player_id1", "visiting_player_id2", "visiting_player_id3", "visiting_player_id4", "visiting_player_id5", "visiting_player_id6", "set_number", "team_touch_id", "home_team", "visiting_team", "home_team_id", "visiting_team_id", "team_id", "point_won_by", "winning_attack", "serving_team", "phase")
+        ## reorder cols
+        plays <- plays[, c(intersect(nms, names(plays)), setdiff(names(plays), nms))]
+        ##class(plays) <- c("datavolleyplays", class(plays))
     }
-    plays$team_touch_id <- temp_ttid
-    plays$phase <- datavolley::play_phase(plays)
-
-    ## propagate serve skill_type to reception
-    plays <- mutate(plays, skill_type = case_when(.data$skill %eq% "Reception" & is.na(.data$skill_type) & lag(.data$skill) %eq% "Serve" & !is.na(lag(.data$skill_type)) ~ sub("serve", "serve reception", lag(.data$skill_type)), TRUE ~ .data$skill_type))
-    ## TODO other skills here too
-
-    ## populate empty skill_type with e.g. "Unknown serve reception type"
-    idx <- is.na(plays$skill_type) & !is.na(plays$skill) & !plays$skill %in% c("Substitution", "Timeout", "Technical timeout", "Rotation error", "Sanction")
-    plays$skill_type[idx] <- paste0("Unknown ", gsub("reception", "serve reception", tolower(plays$skill[idx])), " type")
-
-    ## num_players on block, and also propagated back one to the attack
-##    plays$num_players_numeric <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ 1L,
-##                                           plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ 2L, ## actually this is 2 or 3 players
-##                                           TRUE ~ plays$num_players_numeric)
-##    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players_numeric),
-##                                           TRUE ~ plays$num_players_numeric)
-##    plays$num_players <- case_when(plays$skill %eq% "Block" & plays$eventgrade %eq% 2 ~ "1 player block",
-##                                   plays$skill %eq% "Block" & plays$eventgrade %eq% 3 ~ "Multiplayer block",
-##                                   TRUE ~ plays$num_players)
-##    plays$num_players <- case_when(plays$skill %eq% "Attack" & lead(plays$skill) %eq% "Block" ~ lead(plays$num_players),
-##                                   TRUE ~ plays$num_players)
-    ## number of blockers now comes from attacks
-    plays$num_players_numeric <- case_when(plays$skill %eq% "Attack" & plays$subevent2 %eq% 1 ~ 0L,
-                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 2 ~ 1L,
-                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 3 ~ 2L,
-                                           plays$skill %eq% "Attack" & plays$subevent2 %eq% 4 ~ 3L,
-                                           TRUE ~ as.integer(plays$num_players_numeric))
-    plays$num_players <- case_when(plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 0 ~ "No block",
-                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 1 ~ "1 player block",
-                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 2 ~ "2 player block",
-                                   plays$skill %eq% "Attack" & plays$num_players_numeric %eq% 3 ~ "3 player block",
-                                   TRUE ~ as.character(plays$num_players))
-
-    ## these cols present but not populated (special_code, num_players, num_players_numeric skill_type skill_subtype partly pop)
-## "attack_code" "attack_description" "set_code"
-## [17] "set_description" "set_type" "start_zone" "end_zone"
-## [21] "end_subzone" "num_players" "num_players_numeric"
-## [25] "special_code" "point"
-
-    nms <- c("match_id", "point_id", "time", "video_time", "code", "team", "player_number", "player_name", "player_id", "skill", "skill_type", "evaluation_code", "evaluation", "attack_code", "attack_description", "set_code", "set_description", "set_type", "start_zone", "end_zone", "end_subzone", "skill_subtype", "num_players", "num_players_numeric", "special_code", "timeout", "end_of_set", "substitution", "point", "home_team_score", "visiting_team_score", "home_setter_position", "visiting_setter_position", "custom_code", "file_line_number", "home_p1", "home_p2", "home_p3", "home_p4", "home_p5", "home_p6", "visiting_p1", "visiting_p2", "visiting_p3", "visiting_p4", "visiting_p5", "visiting_p6", "start_coordinate", "mid_coordinate", "end_coordinate", "start_coordinate_x", "start_coordinate_y", "mid_coordinate_x", "mid_coordinate_y", "end_coordinate_x", "end_coordinate_y", "home_player_id1", "home_player_id2", "home_player_id3", "home_player_id4", "home_player_id5", "home_player_id6", "visiting_player_id1", "visiting_player_id2", "visiting_player_id3", "visiting_player_id4", "visiting_player_id5", "visiting_player_id6", "set_number", "team_touch_id", "home_team", "visiting_team", "home_team_id", "visiting_team_id", "team_id", "point_won_by", "winning_attack", "serving_team", "phase")
-    ## reorder cols
-    plays <- plays[, c(intersect(nms, names(plays)), setdiff(names(plays), nms))]
-    ##class(plays) <- c("datavolleyplays", class(plays))
     msgs <- do.call(rbind, lapply(msgs, as_tibble))
     list(meta = meta, file_meta = file_meta, messages = msgs, plays = plays)
 }

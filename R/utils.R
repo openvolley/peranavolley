@@ -164,72 +164,74 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
     if (!is.data.frame(xp)) {
         stop("x must be a list with 'plays' component, or a data.frame")
     }
-    if (!all(c("skill") %in% names(xp))) stop("x must contain at least the column 'skill' - is it a peranavolley object or the plays component of one?")
-    check_remap_ok(remap)
-    assert_that(is.flag(log_changes), !is.na(log_changes))
     chng <- tibble(change = character(), n = integer(), rows = list())
-    dolog <- function(change, rows) {
+    if (!is.null(xp) && nrow(xp) > 0) {
+        if (!all(c("skill") %in% names(xp))) stop("x must contain at least the column 'skill' - is it a peranavolley object or the plays component of one?")
+        check_remap_ok(remap)
+        assert_that(is.flag(log_changes), !is.na(log_changes))
+        dolog <- function(change, rows) {
+            if (log_changes) {
+                if (is.logical(rows)) rows <- which(rows)
+                if (length(rows) > 0) chng <<- bind_rows(chng, tibble(change = change, n = length(rows), rows = list(rows)))
+            }
+            invisible(TRUE)
+        }
+
+        ## figure out where setter is
+        temp <- t(as.matrix(xp[, paste0("home_player_id", 1:6)])) ## 6 x n
+        xp$ZZZ_home_setter_id <- temp[xp$home_setter_position + (seq_len(nrow(xp))-1)*6]
+        temp <- t(as.matrix(xp[, paste0("visiting_player_id", 1:6)])) ## 6 x n
+        xp$ZZZ_visiting_setter_id <- temp[xp$visiting_setter_position + (seq_len(nrow(xp))-1)*6]
+        xp <- mutate(xp, ZZZ_player_role = case_when(.data$team %eq% .data$home_team & .data$player_id %eq% .data$ZZZ_home_setter_id ~ "setter",
+                                                     .data$team %eq% .data$visiting_team & .data$player_id %eq% .data$ZZZ_visiting_setter_id ~ "setter"))
+        if (remap_is_list(remap)) {
+            for (rmi in seq_along(remap)) {
+                names(remap[[rmi]]$conditions)[names(remap[[rmi]]$conditions) %eq% "player_role"] <- "ZZZ_player_role"
+            }
+        } else {
+            names(remap$conditions)[names(remap$conditions) %eq% "player_role"] <- "ZZZ_player_role"
+        }
+        xp <- pv_recode(xp, remap = remap, log_changes = log_changes)
         if (log_changes) {
-            if (is.logical(rows)) rows <- which(rows)
-            if (length(rows) > 0) chng <<- bind_rows(chng, tibble(change = change, n = length(rows), rows = list(rows)))
+            chng <- bind_rows(chng, attr(xp, "changes"))
+            attr(xp, "changes") <- NULL
         }
-        invisible(TRUE)
+        ## add freeball_over col
+        xp$freeball_over <- xp$skill %eq% "Freeball"
+        ## fix evaluations of freeballs
+        ## because they start scouted as attacks, they end up as
+        ## = Error; / Blocked; ~ Spike in play; # Winning attack
+        fidx <- xp$skill %eq% "Freeball"
+        xp$evaluation[fidx & xp$evaluation_code %eq% "~"] <- "Freeball in play"
+        xp$evaluation[fidx & xp$evaluation_code %eq% "#"] <- "Winning freeball"
+        ## what was an A# will now be a F#, with evaluation "Winning freeball"
+        ## This *should* be followed by a dig error, but the scout might not have entered that
+        ## digs on freeballs over are treated as freeball passes
+        idx <- xp$skill %eq% "Dig" & lag(xp$skill) %eq% "Freeball" & !lag(xp$team) %eq% xp$team
+        xp$skill[idx] <- "Freeball"
+        xp$skill_type[idx] <- "Unknown freeball type"
+        xp$evaluation[idx] <- sub(" dig", " freeball", xp$evaluation[idx])
+        dolog(change = "Digs following freeballs over changed to freeballs", rows = idx)
+
+        ## attack on first team contact to PR
+        ## this one is particularly prone to missed actions, leave for now
+        ##idx <- xp$skill %eq% "Attack" & !lag(xp$team) %eq% xp$team
+        ##xp$skill_type[idx] <- "Other attack"
+        ##xp$attack_code[idx] <- "PR"
+        ##dolog(change = "First-contact attacks changed to attack code PR", rows = idx)
+        ## this handled (commented out) for middles in pv_tas_recode BUT IT WON'T WORK YET BECAUSE WE DON'T HAVE PLAYER ROLES OTHER THAN SETTER/LIBERO
+
+        ## - when attack skill_subtype is "Spike off the block" (subevent=4) and it's NOT a kill AND there's no following block THEN insert a block control (unknown player)
+        ##idx <- xp$skill %eq% "Attack" & xp$skill_subtype %eq% "Spike off the block" & evaluation %eq% "Spike in play" & !lead(xp$skill) %eq% "Block"
+        ## TODO
+
+        ## other possibilities:
+        ## "spike in play" followed by opposite team block (control) then another touch by the attacking team
+        ##  should be given evaluation "Blocked for reattack" with evaluation_code "!"
+
+        ## drop those extra cols in case they interfere with downstream processing
+        xp <- xp[, setdiff(names(xp), c("ZZZ_home_setter_id", "ZZZ_visiting_setter_id", "ZZZ_player_role"))]
     }
-
-    ## figure out where setter is
-    temp <- t(as.matrix(xp[, paste0("home_player_id", 1:6)])) ## 6 x n
-    xp$ZZZ_home_setter_id <- temp[xp$home_setter_position + (seq_len(nrow(xp))-1)*6]
-    temp <- t(as.matrix(xp[, paste0("visiting_player_id", 1:6)])) ## 6 x n
-    xp$ZZZ_visiting_setter_id <- temp[xp$visiting_setter_position + (seq_len(nrow(xp))-1)*6]
-    xp <- mutate(xp, ZZZ_player_role = case_when(.data$team %eq% .data$home_team & .data$player_id %eq% .data$ZZZ_home_setter_id ~ "setter",
-                                                 .data$team %eq% .data$visiting_team & .data$player_id %eq% .data$ZZZ_visiting_setter_id ~ "setter"))
-    if (remap_is_list(remap)) {
-        for (rmi in seq_along(remap)) {
-            names(remap[[rmi]]$conditions)[names(remap[[rmi]]$conditions) %eq% "player_role"] <- "ZZZ_player_role"
-        }
-    } else {
-        names(remap$conditions)[names(remap$conditions) %eq% "player_role"] <- "ZZZ_player_role"
-    }
-    xp <- pv_recode(xp, remap = remap, log_changes = log_changes)
-    if (log_changes) {
-        chng <- bind_rows(chng, attr(xp, "changes"))
-        attr(xp, "changes") <- NULL
-    }
-    ## add freeball_over col
-    xp$freeball_over <- xp$skill %eq% "Freeball"
-    ## fix evaluations of freeballs
-    ## because they start scouted as attacks, they end up as
-    ## = Error; / Blocked; ~ Spike in play; # Winning attack
-    fidx <- xp$skill %eq% "Freeball"
-    xp$evaluation[fidx & xp$evaluation_code %eq% "~"] <- "Freeball in play"
-    xp$evaluation[fidx & xp$evaluation_code %eq% "#"] <- "Winning freeball"
-    ## what was an A# will now be a F#, with evaluation "Winning freeball"
-    ## This *should* be followed by a dig error, but the scout might not have entered that
-    ## digs on freeballs over are treated as freeball passes
-    idx <- xp$skill %eq% "Dig" & lag(xp$skill) %eq% "Freeball" & !lag(xp$team) %eq% xp$team
-    xp$skill[idx] <- "Freeball"
-    xp$skill_type[idx] <- "Unknown freeball type"
-    xp$evaluation[idx] <- sub(" dig", " freeball", xp$evaluation[idx])
-    dolog(change = "Digs following freeballs over changed to freeballs", rows = idx)
-
-    ## attack on first team contact to PR
-    ## this one is particularly prone to missed actions, leave for now
-    ##idx <- xp$skill %eq% "Attack" & !lag(xp$team) %eq% xp$team
-    ##xp$skill_type[idx] <- "Other attack"
-    ##xp$attack_code[idx] <- "PR"
-    ##dolog(change = "First-contact attacks changed to attack code PR", rows = idx)
-    ## this handled (commented out) for middles in pv_tas_recode BUT IT WON'T WORK YET BECAUSE WE DON'T HAVE PLAYER ROLES OTHER THAN SETTER/LIBERO
-
-    ## - when attack skill_subtype is "Spike off the block" (subevent=4) and it's NOT a kill AND there's no following block THEN insert a block control (unknown player)
-    ##idx <- xp$skill %eq% "Attack" & xp$skill_subtype %eq% "Spike off the block" & evaluation %eq% "Spike in play" & !lead(xp$skill) %eq% "Block"
-    ## TODO
-
-    ## other possibilities:
-    ## "spike in play" followed by opposite team block (control) then another touch by the attacking team
-    ##  should be given evaluation "Blocked for reattack" with evaluation_code "!"
-
-    ## drop those extra cols in case they interfere with downstream processing
-    xp <- xp[, setdiff(names(xp), c("ZZZ_home_setter_id", "ZZZ_visiting_setter_id", "ZZZ_player_role"))]
     if (is.list(x) && !is.data.frame(x) && "plays" %in% names(x)) {
         x$plays <- xp
         if (log_changes) attr(x, "changes") <- chng
@@ -246,6 +248,7 @@ pv_tas_live_recode <- function(x, remap = pv_tas_remap(), home_team_rotation = N
     if (!inherits(x, c("peranavolley"))) stop("x must be a peranavolley object")
     ## if home or visiting team rotations have been supplied, use them to infer attack start positions
     ## do this before calling pv_tas_recode, so that the right attack codes get assigned
+    if (nrow(x$plays) < 1 || is.null(x$plays)) return(x) ## nothing to do
     rx <- NULL
     vrx <- NULL
     if (!is.null(home_team_rotation)) {
