@@ -46,7 +46,7 @@ collect_messages <- function(msgs, msg_text, line_nums, raw_lines, severity, fat
     if (missing(line_nums)) line_nums <- NA
     if (missing(raw_lines)) raw_lines <- "[unknown]"
     if (missing(severity)) severity <- NA
-    vt <- rep(NA_integer_, length(line_nums))
+    vt <- rep(NA_real_, length(line_nums))
     ##if (!missing(raw_lines)) vt <- video_time_from_raw(raw_lines)
     if (fatal) {
         lnt <- as.character(line_nums)
