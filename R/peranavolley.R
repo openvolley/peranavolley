@@ -6,7 +6,7 @@
 #' @author Ben Raymond \email{ben@@untan.gl}
 #' @docType package
 #' @importFrom assertthat assert_that is.flag is.string
-#' @importFrom datavolley home_team inspect teams visiting_team
+#' @importFrom datavolley dv_xy2cone dv_xy2index home_team inspect teams visiting_team
 #' @importFrom dplyr as_tibble bind_rows case_when distinct everything filter group_by_at lag lead left_join mutate rename select slice tibble tribble ungroup %>%
 #' @importFrom lubridate as.duration hms ymd_hms
 #' @importFrom rlang .data
