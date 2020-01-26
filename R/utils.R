@@ -231,6 +231,10 @@ pv_tas_recode <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
 
         ## drop those extra cols in case they interfere with downstream processing
         xp <- xp[, setdiff(names(xp), c("ZZZ_home_setter_id", "ZZZ_visiting_setter_id", "ZZZ_player_role"))]
+
+        ## fill in end_cone from end coordinate and start zone
+        aidx <- xp$skill %eq% "Attack"
+        xp$end_cone[aidx] <- dv_xy2cone(xp$end_coordinate[aidx], start_zones = xp$start_zone[aidx])
     }
     if (is.list(x) && !is.data.frame(x) && "plays" %in% names(x)) {
         x$plays <- xp
