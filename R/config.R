@@ -24,7 +24,7 @@ pv_default_eventgrades <- function() {
             "Spike", 0L, "=", "Error", -1L,
             "Spike", 1L, "~", "Spike in play", 0L,
             "Spike", 3L, "#", "Winning attack", 1L,
-            "Block", 0L, "=", "Error", -1L, ## net touch or invasion
+            "Block", 0L, "/", "Invasion", -1L, ## net touch or invasion. Note that block errors by convention in DV are kills off the block
             "Block", 1L, "+", "Positive, block touch", 0L,
             "Block", 2L, "#", "Winning block", 1L, ## solo block
             "Block", 3L, "#", "Winning block", 1L, ## multiplayer block
