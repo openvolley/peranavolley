@@ -309,6 +309,185 @@ pv_tas_live_recode <- function(x, remap = pv_tas_remap(), home_team_rotation = N
     x
 }
 
+
+#' Augment partially-scouted data
+#'
+#' @param x peranavolley: a peranavolley object as returned by \code{\link{pv_read}}
+#'
+#' @return A peranavolley object with additional rows added to its \code{plays} component.
+#'
+#' @seealso \code{\link{pv_read}}, \code{\link{pv_tas_recode}}, \code{\link{pv_tas_live_recode}}
+#'
+#' @export
+pv_tas_data_augment <- function(x) {
+    assert_that(inherits(x, "peranavolley"))
+    plays <- dplyr::filter(mutate(x$plays, gameIndex = row_number()),
+                           .data$skill != "Set" | (.data$skill == "Set" & .data$evaluation == "Error") | is.na(.data$skill))
+    plays_try <- NULL
+    for (teamNo in 1:2) {
+        scoutedTeam <- x$meta$teams$team[teamNo]
+        scoutedTeam_id <- x$meta$teams$team_id[x$meta$teams$team %in% scoutedTeam]
+        otherTeam <- x$meta$teams$team[x$meta$teams$team != scoutedTeam]
+        otherTeam_id <- x$meta$teams$team_id[x$meta$teams$team != scoutedTeam]
+        unassigned_player_id <- paste0(toupper(stringi::stri_rand_strings(7, 6, pattern = "[A-Za-z0-9]")), collapse = "-")
+        unassigned_player_id_scouted <- paste0(toupper(stringi::stri_rand_strings(7, 6, pattern = "[A-Za-z0-9]")), collapse = "-")
+
+        ## Add Serve for other team prior to scoutingTeam reception (when missing)
+        plays_tmp_serve <- dplyr::filter(plays, .data$skill == "Reception" & .data$team %in% scoutedTeam & lag(.data$skill) != "Serve")
+        plays_tmp_serve <- mutate(plays_tmp_serve, team = otherTeam, team_id = otherTeam_id,
+                                  gameIndex = .data$gameIndex - 0.1,
+                                  skill = "Serve", skill_type = "Unknown serve type",
+                                  evaluation = case_when(.data$evaluation == "Error" ~ "Ace",
+                                                         .data$evaluation == "Negative/poor pass" ~ "Positive, opponent some attack",
+                                                         .data$evaluation == "OK, no first tempo possible" ~ "OK, no first tempo possible",
+                                                         .data$evaluation ==  "Perfect/positive pass" ~ "Negative, opponent free attack"),
+                                  evaluation_code = case_when(.data$evaluation == "Ace" ~ "#",
+                                                              .data$evaluation == "Positive, opponent some attack" ~ "+",
+                                                              .data$evaluation == "OK, no first tempo possible" ~ "!",
+                                                              .data$evaluation ==  "Negative, opponent free attack" ~ "-"),
+                                  ## positions for serve might have been entered on reception, so inherit all these
+                                  ## BUT note that pv_read already shuffles the serve/reception coords, so by this point any reception
+                                  ##  coordinates scouted without a corresponding serve will have been lost - FIX TODO
+                                  ##start_zone = NA_integer_, end_zone = NA_integer_, end_subzone = NA_character_,
+                                  ##start_coordinate = NA_integer_, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                                  ##start_coordinate_x = NA, start_coordinate_y = NA_real_,
+                                  ##mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                                  ##mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                                  ##ballstartstring = NA_character_, ballmidstring = NA_character_, ballendstring = NA_character_,
+                                  player_name = "unassigned", player_id = unassigned_player_id, player_number = NA_integer_,
+                                  team_touch_id = NA_integer_,
+                                  phase = "Reception",
+                                  oppositionscore_tmp = .data$teamscore, teamscore = .data$oppositionscore,
+                                  win_loss = case_when(.data$evaluation == "Error" ~ -1,
+                                                       .data$evaluation == "Ace" ~ 1,
+                                                       TRUE ~ 0))
+        plays_tmp_serve <- dplyr::rename(dplyr::select(plays_tmp_serve, -"oppositionscore"), oppositionscore = "oppositionscore_tmp")
+
+        ## Add Reception for other team after scoutedTeam serve (when missing)
+        plays_tmp_reception <- dplyr::filter(plays, .data$skill == "Serve" & .data$team %in% scoutedTeam & .data$evaluation != "Error" & !(lead(.data$skill) == "Reception" & lead(.data$team) == otherTeam))
+        plays_tmp_reception <- mutate(plays_tmp_reception, team = otherTeam, team_id = otherTeam_id,
+                                      gameIndex = .data$gameIndex + 0.1,
+                                      skill = "Reception", skill_type = paste(.data$skill_type, "reception"),
+                                      evaluation = case_when(.data$evaluation == "Ace" ~ "Error",
+                                                             .data$evaluation == "Positive, opponent some attack" ~ "Negative/poor pass",
+                                                             .data$evaluation == "OK, no first tempo possible" ~ "OK, no first tempo possible",
+                                                             .data$evaluation == "Negative, opponent free attack" ~ "Perfect/positive pass"),
+                                      evaluation_code =  case_when(.data$evaluation == "Error" ~ "=",
+                                                                   .data$evaluation == "Negative/poor pass" ~ "-/",
+                                                                   .data$evaluation == "OK, no first tempo possible" ~ "!",
+                                                                   .data$evaluation == "Perfect/positive pass" ~ "#+"),
+                                      ## start and end locations of reception are identical to the serve, so let these be inherited
+                                      ##start_zone = .data$start_zone, end_zone = NA_integer_, end_subzone = NA_character_,
+                                      ##start_coordinate = .data$start_coordinate, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                                      ##start_coordinate_x = .data$start_coordinate_x, start_coordinate_y = .data$start_coordinate_y,
+                                      ##mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                                      ##mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                                      ##ballstartstring = .data$ballstartstring, ballmidstring = NA_character_, ballendstring = NA_character_,
+                                      player_name = "unassigned", player_id = unassigned_player_id,
+                                      player_number = NA_integer_,
+                                      team_touch_id = NA_integer_,
+                                      phase = "Reception",
+                                      oppositionscore_tmp = .data$teamscore, teamscore = .data$oppositionscore,
+                                      win_loss = case_when(.data$evaluation == "Error" ~ -1,
+                                                           TRUE ~ 0))
+        plays_tmp_reception <- dplyr::rename(dplyr::select(plays_tmp_reception, -"oppositionscore"), oppositionscore = "oppositionscore_tmp")
+
+        ## Add Attack for otherTeam before dig or block from scoutedTeam
+        plays_tmp_attack <- dplyr::filter(plays, .data$skill %in% c("Dig", "Block") & .data$team %in% scoutedTeam & !(lag(.data$skill) %in% c("Attack", "Freeball")) & lag(.data$team) %in% otherTeam)
+        plays_tmp_attack <- mutate(plays_tmp_attack, team = otherTeam, team_id = otherTeam_id,
+                                   gameIndex = .data$gameIndex - 0.1,
+                                   skill = "Attack", skill_type = "Unknown attack type", skill_subtype = "Unknown attack subtype",
+                                   evaluation = "Spike in play", evaluation_code =  "~", ## TODO what if block kill/error/invasion or dig error
+                                   start_zone = NA_integer_, end_zone = NA_integer_, end_subzone = NA_character_,
+                                   start_coordinate = NA_integer_, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                                   start_coordinate_x = NA_real_, start_coordinate_y = NA_real_,
+                                   mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                                   mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                                   player_name = "unassigned", player_id = unassigned_player_id,
+                                   player_number = NA_integer_,
+                                   team_touch_id = NA_integer_,
+                                   phase = NA_character_,
+                                   ballstartstring = NA_character_, ballmidstring = NA_character_, ballendstring = NA_character_,
+                                   oppositionscore_tmp = .data$teamscore, teamscore = .data$oppositionscore,
+                                   win_loss = 0)
+        plays_tmp_attack <- dplyr::rename(dplyr::select(plays_tmp_attack, -"oppositionscore"), oppositionscore = "oppositionscore_tmp")
+
+        ## Add Dig for other team after in play attack from scoutedTeam
+        plays_tmp_dig <- dplyr::filter(plays, .data$skill == "Attack" & .data$team %in% scoutedTeam & .data$evaluation == "Spike in play" & lead(.data$skill) != "Dig")
+        plays_tmp_dig <- mutate(plays_tmp_dig, team = otherTeam, team_id = otherTeam_id,
+                                gameIndex = .data$gameIndex + 0.1,
+                                skill = "Dig", skill_type = "Unknown dig type", skill_subtype = "Unknown dig subtype",
+                                evaluation = "Unscouted dig quality", evaluation_code =  "?",
+                                attack_code = NA_character_, attack_description = NA_character_,
+                                start_zone = .data$end_zone, end_zone = NA_integer_, end_subzone = NA_character_,
+                                start_coordinate = .data$end_coordinate, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                                start_coordinate_x = .data$end_coordinate_x, start_coordinate_y = .data$end_coordinate_y,
+                                mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                                mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                                player_name = "unassigned", player_id = unassigned_player_id, player_number = NA_integer_,
+                                team_touch_id = NA_integer_,
+                                phase = "Transition",
+                                ballstartstring = .data$ballendstring, ballmidstring = NA_character_, ballendstring = NA_character_,
+                                oppositionscore_tmp = .data$teamscore, teamscore = .data$oppositionscore,
+                                win_loss = 0)
+        plays_tmp_dig <- dplyr::rename(dplyr::select(plays_tmp_dig, -"oppositionscore"), oppositionscore = "oppositionscore_tmp")
+
+        ## Infer freeball attack from otherTeam
+        plays_tmp_fb <- dplyr::filter(plays, (.data$skill %in% c("Attack", "Freeball") & .data$team %in% scoutedTeam) & !(lag(.data$skill) %in% c("Reception", "Dig", "Set")) & lag(.data$team) %in% scoutedTeam)
+        plays_tmp_fb <- mutate(plays_tmp_fb, team = otherTeam, team_id = otherTeam_id,
+                               gameIndex = .data$gameIndex - 0.1,
+                               skill = "Freeball",  skill_type = "Unknown freeball type", skill_subtype = "Unknown freeball subtype",
+                               evaluation = "Freeball in play", evaluation_code =  "~",
+                               attack_code = NA_character_, attack_description = NA_character_,
+                               start_zone = NA_integer_, end_zone = NA_integer_, end_subzone = NA_character_,
+                               start_coordinate = NA_integer_, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                               start_coordinate_x = NA_real_, start_coordinate_y = NA_real_,
+                               mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                               mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                               player_name = "unassigned", player_id = unassigned_player_id, player_number = NA_integer_,
+                               team_touch_id = NA_integer_,
+                               phase = NA_character_,
+                               ballstartstring = NA_character_, ballmidstring = NA_character_, ballendstring = NA_character_,
+                               oppositionscore_tmp = .data$teamscore, teamscore = .data$oppositionscore,
+                               win_loss = 0)
+        plays_tmp_fb <- dplyr::rename(dplyr::select(plays_tmp_fb, -"oppositionscore"), oppositionscore = "oppositionscore_tmp")
+
+        ## Infer freeball digs for scoutedTeam
+        plays_tmp_fb_dig <- dplyr::filter(plays, .data$skill %in% c("Attack", "Freeball") & .data$team %in% scoutedTeam & !(lag(.data$skill) %in% c("Reception", "Dig", "Set")) & lag(.data$team) %in% scoutedTeam)
+        plays_tmp_fb_dig <- mutate(plays_tmp_fb_dig, team = scoutedTeam, team_id = scoutedTeam_id,
+                                   gameIndex = .data$gameIndex - 0.05,
+                                   skill = "Dig", skill_type = "Freeball dig", skill_subtype = "Unknown dig subtype",
+                                   evaluation = "Unscouted dig quality", evaluation_code =  "?",
+                                   attack_code = NA_character_, attack_description = NA_character_,
+                                   start_zone = NA_integer_, end_zone = NA_integer_, end_subzone = NA_character_,
+                                   start_coordinate = NA_integer_, mid_coordinate = NA_integer_, end_coordinate = NA_integer_,
+                                   start_coordinate_x = NA_real_, start_coordinate_y = NA_real_,
+                                   mid_coordinate_x = NA_real_, end_coordinate_x = NA_real_,
+                                   mid_coordinate_y = NA_real_, end_coordinate_y = NA_real_,
+                                   player_name = "unassigned", player_id = unassigned_player_id_scouted, player_number = NA_integer_,
+                                   team_touch_id = NA_integer_,
+                                   phase = "Transition",
+                                   ballstartstring = NA_character_, ballmidstring = NA_character_, ballendstring = NA_character_,
+                                   oppositionscore = .data$oppositionscore, teamscore = .data$teamscore,
+                                   win_loss = 0)
+ 
+        ## Bind everything together
+        plays_try <- bind_rows(plays_try, bind_rows(plays_tmp_serve, plays_tmp_reception, plays_tmp_attack, plays_tmp_dig, plays_tmp_fb, plays_tmp_fb_dig))
+    }
+
+    plays_try <- dplyr::arrange(bind_rows(plays, plays_try), .data$gameIndex)
+    plays_try <- mutate(plays_try,
+                        phase = case_when(!lag(.data$skill) %in% c("Reception") & .data$skill %in% c("Attack", "Freeball") ~ "Transition",
+                                          lag(.data$skill) %in% c("Reception") & .data$skill %in% c("Attack", "Freeball") ~ "Reception"),
+                        lag_team = lag(.data$team, default = dplyr::first(.data$team)),
+                        new_value = .data$lag_team != .data$team,
+                        num_new_value = case_when(is.na(.data$new_value) | .data$new_value | .data$skill == "Serve" ~ 1,
+                                                  TRUE ~ 0))
+    plays_try <- mutate(group_by_at(plays_try, "team"), team_touch_id = cumsum(.data$num_new_value))
+    x$plays <- ungroup(plays_try)
+    x
+}
+
 # this in the old all-in-one-tibble format, can be deleted later
 # @export
 # @rdname pv_tas_recode

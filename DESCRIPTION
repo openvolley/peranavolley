@@ -17,6 +17,7 @@ Imports:
   lubridate,
   jsonlite,
   rlang,
+  stringi,
   stringr,
   tidyr
 RoxygenNote: 6.1.1
