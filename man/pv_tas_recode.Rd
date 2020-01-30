@@ -3,12 +3,20 @@
 \name{pv_tas_recode}
 \alias{pv_tas_recode}
 \alias{pv_tas_live_recode}
+\alias{pv_tas_recode_augment}
+\alias{pv_tas_live_recode_augment}
 \alias{pv_tas_remap}
 \title{An opinionated recoding}
 \usage{
 pv_tas_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
 
 pv_tas_live_recode(x, remap = pv_tas_remap(),
+  home_team_rotation = NULL, visiting_team_rotation = NULL,
+  log_changes = FALSE)
+
+pv_tas_recode_augment(x, remap = pv_tas_remap(), log_changes = FALSE)
+
+pv_tas_live_recode_augment(x, remap = pv_tas_remap(),
   home_team_rotation = NULL, visiting_team_rotation = NULL,
   log_changes = FALSE)
 
@@ -44,6 +52,8 @@ This function modifies the plays component of a peranavolley object, following t
   \item any other attack (with NA attack code) treated as standard tempo with new attack code determined by start_zone (X5, X6, etc)
   \item any dig following a freeball over is changed to skill "Freeball"
 }
+
+\code{pv_tas_recode_augment} and \code{pv_tas_live_recode_augment} are convenience functions that call \code{pv_tas_recode} or \code{pv_tas_live_recode} followed by \code{\link{pv_tas_data_augment}}
 }
 \examples{
 

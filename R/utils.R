@@ -134,6 +134,8 @@ check_remap_ok <- function(remap) {
 #'   \item any dig following a freeball over is changed to skill "Freeball"
 #' }
 #'
+#' \code{pv_tas_recode_augment} and \code{pv_tas_live_recode_augment} are convenience functions that call \code{pv_tas_recode} or \code{pv_tas_live_recode} followed by \code{\link{pv_tas_data_augment}}
+#'
 #' @param x data.frame or tibble: a peranavolley object as returned by \code{pv_read}, or the plays component thereof
 #' @param remap list: a list with components "conditions" and "values" that define the remapping. See \code{\link{pv_tas_remap}} for an example
 #' @param home_team_rotation string: fixed rotation of the home team, either "SHM" or "SMH". This will be used to infer missing attack \code{start_zone} values (assuming the standard attack by role - e.g. the default attack for an opposite is X6 when they are front row (except in P1 reception when it is X5), and X8 when they are back row). If \code{home_team_rotation} is \code{NULL} this will not be done
@@ -307,6 +309,19 @@ pv_tas_live_recode <- function(x, remap = pv_tas_remap(), home_team_rotation = N
     plays$phase <- datavolley::play_phase(plays)
     x$plays <- plays
     x
+}
+
+#' @rdname pv_tas_recode
+#' @export
+pv_tas_recode_augment <- function(x, remap = pv_tas_remap(), log_changes = FALSE) {
+    pv_tas_data_augment(pv_tas_recode(x = x, remap = remap, log_changes = log_changes))
+
+}
+
+#' @rdname pv_tas_recode
+#' @export
+pv_tas_live_recode_augment <- function(x, remap = pv_tas_remap(), home_team_rotation = NULL, visiting_team_rotation = NULL, log_changes = FALSE) {
+    pv_tas_data_augment(pv_tas_live_recode(x = x, remap = remap, home_team_rotation = home_team_rotation, visiting_team_rotation = visiting_team_rotation, log_changes = log_changes))
 }
 
 
