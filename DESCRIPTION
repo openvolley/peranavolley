@@ -24,5 +24,5 @@ RoxygenNote: 6.1.1
 Suggests:
   knitr,
   testthat
-Remotes: raymondben/datavolley
+Remotes: openvolley/datavolley
 VignetteBuilder: knitr
