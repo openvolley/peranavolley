@@ -10,15 +10,23 @@
 \usage{
 pv_tas_recode(x, remap = pv_tas_remap(), log_changes = FALSE)
 
-pv_tas_live_recode(x, remap = pv_tas_remap(),
-  home_team_rotation = NULL, visiting_team_rotation = NULL,
-  log_changes = FALSE)
+pv_tas_live_recode(
+  x,
+  remap = pv_tas_remap(),
+  home_team_rotation = NULL,
+  visiting_team_rotation = NULL,
+  log_changes = FALSE
+)
 
 pv_tas_recode_augment(x, remap = pv_tas_remap(), log_changes = FALSE)
 
-pv_tas_live_recode_augment(x, remap = pv_tas_remap(),
-  home_team_rotation = NULL, visiting_team_rotation = NULL,
-  log_changes = FALSE)
+pv_tas_live_recode_augment(
+  x,
+  remap = pv_tas_remap(),
+  home_team_rotation = NULL,
+  visiting_team_rotation = NULL,
+  log_changes = FALSE
+)
 
 pv_tas_remap()
 }

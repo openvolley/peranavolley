@@ -3,7 +3,6 @@
 \docType{package}
 \name{peranavolley}
 \alias{peranavolley}
-\alias{peranavolley-package}
 \title{\pkg{peranavolley}}
 \description{
 Functions for reading and working with Perana Sports volleyball scouting files.

@@ -174,7 +174,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         temp_mm$time <- hms(format(temp_mm$trainingdate, "%H:%M:%S"))
     }, silent = TRUE)
     meta$match_id <- temp_mm$guid
-    meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = if (nrow(temp_to) < 1) NA_character_ else temp_to$name, text_encoding = NA_character_, zones_or_cones = "Z")
+    meta$match <- mutate(temp_mm[, c("date", "time")], season = NA_character_, league = if (nrow(temp_to) < 1) NA_character_ else temp_to$name, phase = NA_character_, home_away = NA_character_, day_number = NA_integer_, match_number = NA_integer_, text_encoding = NA_character_, zones_or_cones = "Z", regulation = "indoor rally point")
     video_start_time <- NA
     if (any(names(x) %eq% "V")) {
         try({

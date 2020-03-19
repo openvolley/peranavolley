@@ -4,12 +4,18 @@
 \alias{pv_read}
 \title{Read Perana Sports volleyball data file}
 \usage{
-pv_read(filename, insert_technical_timeouts = FALSE, do_warn = FALSE,
-  extra_validation = 2, raw_only = FALSE,
+pv_read(
+  filename,
+  insert_technical_timeouts = FALSE,
+  do_warn = FALSE,
+  extra_validation = 2,
+  raw_only = FALSE,
   eventgrades = pv_default_eventgrades(),
   errortypes = pv_default_errortypes(),
-  subevents = pv_default_subevents(), setting_zones,
-  postprocess = NULL)
+  subevents = pv_default_subevents(),
+  setting_zones,
+  postprocess = NULL
+)
 }
 \arguments{
 \item{filename}{string: path to file}
