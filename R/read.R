@@ -465,7 +465,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         ##cat(str(temp), "\n")
         if (length(h_lineup) < 6 || length(h_lineup) > 8) stop("unexpected home team lineup")
         last_hl <- h_lineup[1:6]
-        this_plays[1, paste0("home_player_id", 1:6)] <- last_hl
+        this_plays[1, paste0("home_player_id", 1:6)] <- as.list(last_hl)
         home_setter_id <- set_meta$primarysetterguid[si]
         pidx <- update_metadata_player_role(home_setter_id, "setter", team = "home", set_number = si)
         # needs thought, what if the team is playing 6-2 or 4-2
@@ -507,7 +507,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         v_lineup <- strsplit(set_meta$oppositionstartinglineup[si], ",")[[1]]
         if (length(v_lineup) < 6 || length(v_lineup) > 8) stop("unexpected visiting team lineup")
         last_vl <- v_lineup[1:6]
-        this_plays[1, paste0("visiting_player_id", 1:6)] <- last_vl
+        this_plays[1, paste0("visiting_player_id", 1:6)] <- as.list(last_vl)
         visiting_setter_id <- set_meta$oppprimarysetterguid[si]
         update_metadata_player_role(visiting_setter_id, "setter", team = "visiting", set_number = si)
         if (!visiting_setter_id %in% last_vl) {
@@ -762,7 +762,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
                 last_vts <- this_plays$oppositionscore[ei]
             }
             this_plays$point_id[ei] <- this_ptid
-            this_plays[ei, c(paste0("home_player_id", 1:6), paste0("visiting_player_id", 1:6))] <- c(last_hl, last_vl)
+            this_plays[ei, c(paste0("home_player_id", 1:6), paste0("visiting_player_id", 1:6))] <- as.list(c(last_hl, last_vl))
             this_home_setter_pos <- if (home_setter_id %in% last_hl) which(last_hl == home_setter_id) else NA_integer_
             if (length(this_home_setter_pos) != 1) this_home_setter_pos <- NA_integer_
             this_plays$home_setter_position[ei] <- this_home_setter_pos

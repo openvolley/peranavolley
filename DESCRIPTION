@@ -1,6 +1,6 @@
 Package: peranavolley
 Title: Perana Sports Volleyball Files
-Version: 0.7.2
+Version: 0.7.3
 Authors@R: c(person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre")),
              person("Chau", "Le", role = "ctb"),
              person("Adrien", "Ickowicz", role = "ctb"))
