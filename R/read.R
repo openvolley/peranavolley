@@ -151,6 +151,11 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         out <- mutate(out, name = paste(.data$firstname, .data$lastname),
                       special_role = "",##case_when(grepl("libero", .data$positionsstring, ignore.case = TRUE) ~ "L", TRUE ~ ""),
                       role = NA_character_)##case_when(special_role %eq% "L" ~ "libero"))
+        if ("dob" %in% names(out)) {
+            ## 1970-01-01 dates are defaults, remove them
+            idx <- vapply(out$dob, function(z) tryCatch(as.Date(z) == as.Date("1970-01-01"), error = function(e) FALSE), FUN.VALUE = TRUE)
+            out$dob[idx] <- NA_character_
+        }
         dplyr::select(out, -"thumbnaildata", -"positionsstring")
     }
 
@@ -193,6 +198,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     temp_ta <- pparse_df(x[names(x) == "TA"])
     meta$teams <- tibble(team_id = as.character(c(temp_th$guid, temp_ta$guid)),
                          team = c(temp_th$name, temp_ta$name),
+                         team_code = c(temp_th$code, temp_ta$code),
                          sets_won = c(temp_mm$homescore, temp_mm$awayscore),
                          coach = NA_character_,
                          assistant = NA_character_,
