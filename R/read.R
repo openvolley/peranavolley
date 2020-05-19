@@ -185,6 +185,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         try({
             temp_vid <- pparse_df(x[names(x) == "V"])
             if (!is.null(temp_vid) && nrow(temp_vid) > 0) video_start_time <- temp_vid$starttime
+            meta$video <- tibble(camera = "Camera0", file = temp_vid$url)
         }, silent = TRUE)
     }
     if (is.null(video_start_time) || is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
