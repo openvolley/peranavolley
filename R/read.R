@@ -184,7 +184,8 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     if (any(names(x) %eq% "V")) {
         try({
             temp_vid <- pparse_df(x[names(x) == "V"])
-            if (!is.null(temp_vid) && nrow(temp_vid) > 0) video_start_time <- temp_vid$starttime
+            if (!is.null(temp_vid) && nrow(temp_vid) > 0 && "starttime" %in% names(temp_vid)) video_start_time <- temp_vid$starttime
+            meta$video <- tibble(camera = "Camera0", file = temp_vid$url)
         }, silent = TRUE)
     }
     if (is.null(video_start_time) || is.na(video_start_time)) video_start_time <- temp_mm$trainingdate
@@ -853,7 +854,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     } else {
         plays <- dplyr::rename(plays, skill = "eventstring", player_id = "playerguid", time = "timestamp", video_time = "videoduration")
         ## actually videoduration appears always to be zero
-        try(plays$video_time <- difftime(plays$time, video_start_time, units = "secs"), silent = TRUE)
+        try(plays$video_time <- as.numeric(difftime(plays$time, video_start_time, units = "secs")), silent = TRUE)
         ## "subevent2" "subevent" "eventid" "row" "userdefined01"
         plays <- dplyr::select(plays, -"eventtype")
         plays <- mutate(plays, match_id = meta$match_id,
