@@ -46,7 +46,8 @@ pv_write <- function(x, filename) {
 #' Experimental: write VBStats file to DVW format
 #'
 #' @param x peranavolley: a peranavolley object as returned by \code{\link{pv_read}}
-#' @param file string: the filename to write to. If not supplied, no file will be written but the dvw content will be returned
+#' @param filename string: the filename to write to. If not supplied, no file will be written but the dvw content will be returned
+#' @param dv_style_ids logical: if \code{TRUE}, use DataVolley-style player IDs ("SUR-FIR" for player "Firstname Surname")
 #' @param attack_codes data.frame: the attack combination codes table to embed in the file. If \code{NULL}, the internal one will be used, which corresponds to the setting zones 1-5 used in VBStats. See also \code{\link[datavolley]{dv_default_attack_codes}}
 #' @param text_encoding string: the text encoding to use
 #'
