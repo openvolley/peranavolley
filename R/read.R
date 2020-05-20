@@ -184,7 +184,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     if (any(names(x) %eq% "V")) {
         try({
             temp_vid <- pparse_df(x[names(x) == "V"])
-            if (!is.null(temp_vid) && nrow(temp_vid) > 0 && "starttime" %in% names(temp_vid)) video_start_time <- temp_vid$starttime
+            if (!is.null(temp_vid) && nrow(temp_vid) > 0 && "starttime" %in% names(temp_vid)) video_start_time <- ymd_hms(temp_vid$starttime)
             meta$video <- tibble(camera = "Camera0", file = temp_vid$url)
         }, silent = TRUE)
     }
