@@ -17,6 +17,6 @@ below to see their documentation.
 \describe{
   \item{datavolley}{\code{\link[datavolley]{home_team}}, \code{\link[datavolley]{inspect}}, \code{\link[datavolley]{teams}}, \code{\link[datavolley]{visiting_team}}}
 
-  \item{dplyr}{\code{\link[dplyr]{\%>\%}}}
+  \item{dplyr}{\code{\link[dplyr:reexports]{\%>\%}}}
 }}
 
