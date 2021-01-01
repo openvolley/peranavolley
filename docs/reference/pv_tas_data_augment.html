@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Write a Perana Sports tagger (psvt) data file — pt_write • peranavolley</title>
+<title>Augment partially-scouted data — pv_tas_data_augment • peranavolley</title>
 
 
 <!-- jquery -->
@@ -39,8 +39,8 @@
 
 
 
-<meta property="og:title" content="Write a Perana Sports tagger (psvt) data file — pt_write" />
-<meta property="og:description" content="This is somewhat experimental. It may be useful if one wants to read an existing file, modify the content, and re-write it back to a psvt file." />
+<meta property="og:title" content="Augment partially-scouted data — pv_tas_data_augment" />
+<meta property="og:description" content="Augment partially-scouted data" />
 
 
 
@@ -103,33 +103,32 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Write a Perana Sports tagger (psvt) data file</h1>
+    <h1>Augment partially-scouted data</h1>
     
-    <div class="hidden name"><code>pt_write.Rd</code></div>
+    <div class="hidden name"><code>pv_tas_data_augment.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>This is somewhat experimental. It may be useful if one wants to read an existing file, modify the content, and re-write it back to a psvt file.</p>
+    <p>Augment partially-scouted data</p>
     </div>
 
-    <pre class="usage"><span class='fu'>pt_write</span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>filename</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>pv_tas_data_augment</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>character: data to write. See e.g the <code>raw</code> component of the object returned by <code><a href='pt_read.html'>pt_read</a></code></p></td>
-    </tr>
-    <tr>
-      <th>filename</th>
-      <td><p>string: path to file</p></td>
+      <td><p>peranavolley: a peranavolley object as returned by <code><a href='pv_read.html'>pv_read</a></code></p></td>
     </tr>
     </table>
 
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+
+    <p>A peranavolley object with additional rows added to its <code>plays</code> component.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <div class='dont-index'><p><code><a href='pt_read.html'>pt_read</a></code></p></div>
+    <div class='dont-index'><p><code><a href='pv_read.html'>pv_read</a></code>, <code><a href='pv_tas_recode.html'>pv_tas_recode</a></code>, <code><a href='pv_tas_recode.html'>pv_tas_live_recode</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
