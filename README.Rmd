@@ -26,11 +26,17 @@ See also [datavolley](https://github.com/openvolley/datavolley), which provides 
 
 ## Installation
 
-You can install peranavolley from GitHub with:
-
 ```{r eval = FALSE}
-library(remotes)
-install_github("openvolley/peranavolley")
+options(repos = c(openvolley = "https://openvolley.r-universe.dev",
+                  CRAN = "https://cloud.r-project.org"))
+
+install.packages("peranavolley")
+
+## or
+
+## install.packages("remotes") ## if needed
+remotes::install_github("openvolley/peranavolley")
+
 ```
 
 ## Example

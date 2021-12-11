@@ -20,11 +20,16 @@ peranavolley package follow those of the datavolley package.
 
 ## Installation
 
-You can install peranavolley from GitHub with:
-
 ``` r
-library(remotes)
-install_github("openvolley/peranavolley")
+options(repos = c(openvolley = "https://openvolley.r-universe.dev",
+                  CRAN = "https://cloud.r-project.org"))
+
+install.packages("peranavolley")
+
+## or
+
+## install.packages("remotes") ## if needed
+remotes::install_github("openvolley/peranavolley")
 ```
 
 ## Example
@@ -64,7 +69,7 @@ plays(x) %>% dplyr::filter(skill == "Attack") %>%
   dplyr::summarize(`N attacks` = n(), `Kill rate` = mean(evaluation == "Winning attack", na.rm = TRUE)) %>%
   ungroup %>%
   dplyr::arrange(desc(`Kill rate`)) %>% dplyr::select(-player_id)
-#> # A tibble: 16 x 4
+#> # A tibble: 16 × 4
 #>    team                player_name     `N attacks` `Kill rate`
 #>    <chr>               <chr>                 <int>       <dbl>
 #>  1 UTSSU Men's         Brian Cho                 3       0.667
