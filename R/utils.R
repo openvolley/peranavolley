@@ -498,7 +498,7 @@ pv_tas_data_augment <- function(x) {
                         new_value = .data$lag_team != .data$team,
                         num_new_value = case_when(is.na(.data$new_value) | .data$new_value | .data$skill == "Serve" ~ 1,
                                                   TRUE ~ 0))
-    plays_try <- mutate(group_by_at(plays_try, "team"), team_touch_id = cumsum(.data$num_new_value))
+    plays_try <- mutate(group_by(plays_try, .data$team), team_touch_id = cumsum(.data$num_new_value))
     x$plays <- ungroup(plays_try)
     x
 }
@@ -585,7 +585,7 @@ infer_playing_positions_by_rotation <- function(x, rotation, method = "standard"
         hrid <- tidyr::gather(distinct(x[, c("match_id", "point_id", paste0("home_player_id", 1:6))]), key = "position", value = "player_id", paste0("home_player_id", 1:6))
         hrid$position <- sub("home_player_id", "", hrid$position, fixed = TRUE)
         hrx <- left_join(hrx, hrid, by = c("match_id", "point_id", "position"))
-        hrx <- hrx %>% left_join(x %>% group_by_at(c("match_id", "point_id")) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$visiting_team %eq% .data$serving_team & .data$home_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
+        hrx <- hrx %>% left_join(x %>% group_by(.data$match_id, .data$point_id) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$visiting_team %eq% .data$serving_team & .data$home_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
     } else {
         hrx <- NULL
     }
@@ -600,7 +600,7 @@ infer_playing_positions_by_rotation <- function(x, rotation, method = "standard"
         vrid <- tidyr::gather(distinct(x[, c("match_id", "point_id", paste0("visiting_player_id", 1:6))]), key = "position", value = "player_id", paste0("visiting_player_id", 1:6))
         vrid$position <- sub("visiting_player_id", "", vrid$position, fixed = TRUE)
         vrx <- left_join(vrx, vrid, by = c("match_id", "point_id", "position"))
-        vrx <- vrx %>% left_join(x %>% group_by_at(c("match_id", "point_id")) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$home_team %eq% .data$serving_team & .data$visiting_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
+        vrx <- vrx %>% left_join(x %>% group_by(.data$match_id, .data$point_id) %>% slice(1L) %>% ungroup %>% dplyr::mutate(p1_reception = .data$home_team %eq% .data$serving_team & .data$visiting_setter_position %eq% 1) %>% dplyr::select_at(c("match_id", "point_id", "p1_reception")), by = c("match_id", "point_id"))
     } else {
         vrx <- NULL
     }
