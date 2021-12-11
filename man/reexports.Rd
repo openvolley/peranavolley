@@ -15,7 +15,7 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{datavolley}{\code{\link[datavolley]{home_team}}, \code{\link[datavolley]{inspect}}, \code{\link[datavolley]{teams}}, \code{\link[datavolley]{visiting_team}}}
+  \item{datavolley}{\code{\link[datavolley:teams]{home_team}}, \code{\link[datavolley]{inspect}}, \code{\link[datavolley]{teams}}, \code{\link[datavolley:teams]{visiting_team}}}
 
   \item{dplyr}{\code{\link[dplyr:reexports]{\%>\%}}}
 }}
