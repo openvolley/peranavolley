@@ -265,6 +265,11 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
     meta$players_v <- left_join(meta$players_v, temp, by = "player_id")
     if (nrow(meta$players_v) != chk) stop("error with visiting player lineup")
 
+    for (sn in 1:5) {
+        meta$players_h[[paste0("starting_position_set", sn)]] <- NA_character_
+        meta$players_v[[paste0("starting_position_set", sn)]] <- NA_character_
+    }
+
     ## drill players
     ## DTHP, DTAP ??
 
@@ -320,11 +325,21 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
             ##    msgs <<- collect_messages(msgs, this_msg, qidx[set_number], x[qidx[set_number]], severity = 1)
             ##}
             if (team == "home") {
-                meta$players_h$role[this_pidx] <<- role
-                if (role %eq% "libero" && !grepl("L", meta$players_h$special_role[this_pidx])) meta$players_h$special_role[this_pidx] <<- paste0(meta$players_h$special_role[this_pidx], "L")
+                mph <- meta$players_h
+                mph$role[this_pidx] <- role
+                if (role %eq% "libero") {
+                    if (!grepl("L", mph$special_role[this_pidx])) mph$special_role[this_pidx] <- paste0(mph$special_role[this_pidx], "L")
+                    mph[[paste0("starting_position_set", set_number)]][this_pidx] <- "*"
+                }
+                meta$players_h <<- mph
             } else {
-                meta$players_v$role[this_pidx] <<- role
-                if (role %eq% "libero" && !grepl("L", meta$players_v$special_role[this_pidx])) meta$players_v$special_role[this_pidx] <<- paste0(meta$players_v$special_role[this_pidx], "L")
+                mpv <- meta$players_v
+                mpv$role[this_pidx] <- role
+                if (role %eq% "libero") {
+                    if (!grepl("L", mpv$special_role[this_pidx])) mpv$special_role[this_pidx] <- paste0(mpv$special_role[this_pidx], "L")
+                    mpv[[paste0("starting_position_set", set_number)]][this_pidx] <- "*"
+                }
+                meta$players_v <<- mpv
             }
         }
         this_pidx
@@ -467,7 +482,7 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         this_plays[, paste0("home_player_id", 1:6)] <- NA_character_
         this_plays[, paste0("visiting_player_id", 1:6)] <- NA_character_
         h_lineup <- strsplit(set_meta$startinglineup[si], ",")[[1]]
-        ## entries 1-6 are pos 1-6, entry 7 = libero (??), entry 8 = ??
+        ## entries 1-6 are pos 1-6, entry 7 = libero (??), entry 8 = second libero??
         ##temp <- tibble(player_id = h_lineup) %>% left_join(meta$players_h)
         ##cat(str(temp), "\n")
         if (length(h_lineup) < 6 || length(h_lineup) > 8) stop("unexpected home team lineup")
@@ -993,6 +1008,36 @@ pv_parse <- function(x, eventgrades, errortypes, subevents, setting_zones, do_wa
         for (pn in 1:6) {
             plays[[paste0("home_p", pn)]] <- dmapvalues(plays[[paste0("home_player_id", pn)]], meta$players_h$player_id, meta$players_h$number)
             plays[[paste0("visiting_p", pn)]] <- dmapvalues(plays[[paste0("visiting_player_id", pn)]], meta$players_v$player_id, meta$players_v$number)
+        }
+
+        ## add starting positions of players in each set to metadata
+        psp <- slice(group_by(dplyr::filter(plays, !is.na(.data$set_number)), .data$set_number), 1L)
+        for (sn in seq_len(nrow(psp))) {
+            for (pn in 1:6) {
+                pidx <- which(meta$players_h$player_id == psp[[paste0("home_player_id", pn)]][sn])
+                if (length(pidx) == 1) meta$players_h[[paste0("starting_position_set", sn)]][pidx] <- as.character(pn)
+                ## if no match, warn? but should have already picked this up
+                pidx <- which(meta$players_v$player_id == psp[[paste0("visiting_player_id", pn)]][sn])
+                if (length(pidx) == 1) meta$players_v[[paste0("starting_position_set", sn)]][pidx] <- as.character(pn)
+            }
+        }
+        for (sn in 1:5) {
+            ## home players on court but not in starting lineup
+            allpid <- unique(plays[which(plays$set_number == sn), paste0("home_player_id", 1:6)])
+            allpid <- unique(as.character(as.matrix(allpid)))
+            if (length(allpid) > 0) {
+                for (pidx in seq_len(nrow(meta$players_h))) {
+                    if (meta$players_h$player_id[pidx] %in% allpid && is.na(meta$players_h[[paste0("starting_position_set", sn)]][pidx])) meta$players_h[[paste0("starting_position_set", sn)]][pidx] <- "*"
+                }
+            }
+            ## visiting players
+            allpid <- unique(plays[which(plays$set_number == sn), paste0("visiting_player_id", 1:6)])
+            allpid <- unique(as.character(as.matrix(allpid)))
+            if (length(allpid) > 0) {
+                for (pidx in seq_len(nrow(meta$players_v))) {
+                    if (meta$players_v$player_id[pidx] %in% allpid && is.na(meta$players_v[[paste0("starting_position_set", sn)]][pidx])) meta$players_v[[paste0("starting_position_set", sn)]][pidx] <- "*"
+                }
+            }
         }
 
         ## add team_touch_id - an identifier of consecutive touches by same team in same point - e.g. a dig-set-attack sequence by one team is a "team touch"
