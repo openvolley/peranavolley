@@ -1,6 +1,6 @@
 Package: peranavolley
 Title: Perana Sports Volleyball Files
-Version: 0.7.5
+Version: 0.7.6
 Authors@R: c(person("Ben", "Raymond", email = "ben@untan.gl", role = c("aut", "cre")),
              person("Chau", "Le", role = "ctb"),
              person("Adrien", "Ickowicz", role = "ctb"))
@@ -20,7 +20,7 @@ Imports:
   stringi,
   stringr,
   tidyr
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.2
 Suggests:
   knitr,
   testthat
